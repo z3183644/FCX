@@ -24,6 +24,36 @@ def humanize(message: object) -> dict[str, str] | None:
         return None
     lowered = raw.lower()
 
+    match = re.match(r"WEB_CLIENT\s+sbc_submission_failed:\s*(.*)", raw, re.IGNORECASE)
+    if match:
+        detail = match.group(1).strip()
+        if re.search(r"(?:状态|status)\s*[:：]?\s*403|\b403\b", detail, re.IGNORECASE):
+            return _item(
+                "error", "EA 暂时拒绝了 SBC 提交",
+                "求解方案已经生成，但 EA 返回 403，拒绝了这一次阵容提交。",
+                raw,
+                "先刷新 Web App 并确认账号仍在线；若持续出现，请暂停一段时间，并避免多个 SBC 插件同时提交。",
+            )
+        return _item(
+            "error", "EA 提交失败", "后端已成功生成方案，但网页端未能向 EA 提交阵容。",
+            raw, f"请在网页重新打开该 SBC 后重试。EA 返回：{detail}"
+        )
+    match = re.match(r"WEB_CLIENT\s+sbc_set_stopped:\s*(.*)", raw, re.IGNORECASE)
+    if match:
+        return _item(
+            "warning", "整组 SBC 已停止", match.group(1).strip(),
+            raw, "请按提示检查阵容状态；若仍失败，可复制技术详情用于反馈。"
+        )
+    match = re.match(
+        r"WEB_CLIENT\s+(?:sbc_runtime_failed|sbc_submission_skipped):\s*(.*)",
+        raw,
+        re.IGNORECASE,
+    )
+    if match:
+        return _item(
+            "error", "方案未完成提交", match.group(1).strip(),
+            raw, "求解器可能已经找到方案；请根据此处原因检查网页状态和自动提交设置。"
+        )
     if "solver started" in lowered or "starting sbc solver" in lowered:
         return _item("info", "正在求解", "后端已开始为当前 SBC 计算阵容。", raw)
     match = re.search(r"Processing\s+(\d+)\s+players", raw, re.IGNORECASE)
@@ -68,6 +98,23 @@ def diagnostics_for_logs(logs: list[dict[str, Any]]) -> list[dict[str, str]]:
         if item and (not items or items[-1] != item):
             items.append(item)
     return items[-12:]
+
+
+def latest_sbc_stop_alert(logs: list[dict[str, Any]]) -> dict[str, Any] | None:
+    for entry in reversed(logs):
+        raw = str(entry.get("message") or "").strip()
+        match = re.match(r"WEB_CLIENT\s+sbc_set_stopped:\s*(.*)", raw, re.IGNORECASE)
+        if not match:
+            continue
+        reason = match.group(1).strip() or "网页端未提供具体原因。"
+        occurred_at = float(entry.get("time") or 0)
+        return {
+            "event_id": f"{occurred_at:.6f}:{reason}",
+            "title": "SBC 已停止",
+            "reason": reason,
+            "occurred_at": occurred_at,
+        }
+    return None
 
 
 def _item(

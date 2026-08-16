@@ -60,6 +60,17 @@ private struct SbcSetStats: Codable, Identifiable {
     var id: String { setId }
 }
 
+private struct EaSbcSetStats: Codable, Identifiable {
+    let setId: String
+    let setName: String
+    let timesCompleted: Int
+    let observedTotal: Int
+    let visible: Bool
+    let lastSeenAt: String?
+
+    var id: String { setId }
+}
+
 private struct SbcStats: Codable {
     let date: String
     let todaySquadsSubmitted: Int
@@ -67,10 +78,16 @@ private struct SbcStats: Codable {
     let totalSquadsSubmitted: Int
     let totalSetsCompleted: Int
     let bySet: [SbcSetStats]
+    let eaVisibleSetsCompleted: Int
+    let eaObservedSetsCompleted: Int
+    let eaBySet: [EaSbcSetStats]
+    let webVisibleDailySbcCount: Int?
 
     static let empty = SbcStats(
         date: "", todaySquadsSubmitted: 0, todaySetsCompleted: 0,
-        totalSquadsSubmitted: 0, totalSetsCompleted: 0, bySet: []
+        totalSquadsSubmitted: 0, totalSetsCompleted: 0, bySet: [],
+        eaVisibleSetsCompleted: 0, eaObservedSetsCompleted: 0, eaBySet: [],
+        webVisibleDailySbcCount: 0
     )
 }
 
@@ -100,8 +117,18 @@ private struct DiagnosticItem: Codable, Identifiable, Equatable {
     }
 }
 
+private struct SbcStopAlert: Codable, Identifiable {
+    let eventId: String
+    let title: String
+    let reason: String
+    let occurredAt: Double
+
+    var id: String { eventId }
+}
+
 private struct DiagnosticsPayload: Codable {
     let items: [DiagnosticItem]
+    let stopAlert: SbcStopAlert?
 }
 
 @MainActor
@@ -113,12 +140,14 @@ private final class BackendModel: ObservableObject {
     @Published private(set) var technicalLogs: [String] = []
     @Published private(set) var stats: SbcStats = .empty
     @Published private(set) var diagnosticItems: [DiagnosticItem] = []
+    @Published var activeStopAlert: SbcStopAlert?
 
     private var process: Process?
     private var shutdownToken = ""
     private var instanceToken = ""
     private var healthTask: Task<Void, Never>?
     private var dashboardTask: Task<Void, Never>?
+    private var lastStopAlertID = ""
 
     init() {
         portText = String(Self.loadPort())
@@ -296,7 +325,11 @@ private final class BackendModel: ObservableObject {
 
     private func appendLog(_ text: String) {
         let lines = text.split(whereSeparator: \Character.isNewline).map(String.init)
-        technicalLogs.append(contentsOf: lines.filter { !$0.isEmpty })
+        technicalLogs.append(contentsOf: lines.filter {
+            !$0.isEmpty
+                && !$0.contains("\"GET /stats HTTP/")
+                && !$0.contains("\"GET /diagnostics HTTP/")
+        })
         if technicalLogs.count > 600 {
             technicalLogs.removeFirst(technicalLogs.count - 500)
         }
@@ -326,6 +359,12 @@ private final class BackendModel: ObservableObject {
            (response as? HTTPURLResponse)?.statusCode == 200,
            let payload = try? decoder.decode(DiagnosticsPayload.self, from: data) {
             diagnosticItems = payload.items
+            if let alert = payload.stopAlert, alert.eventId != lastStopAlertID {
+                lastStopAlertID = alert.eventId
+                activeStopAlert = alert
+                NSApp.requestUserAttention(.criticalRequest)
+                NSApp.activate(ignoringOtherApps: true)
+            }
         }
     }
 
@@ -408,7 +447,7 @@ private struct SbcStatsCard: View {
                 Label("SBC 完成统计", systemImage: "soccerball")
                     .font(.headline)
                 Spacer()
-                Text("仅统计 FCX 自动提交且 EA 确认成功的记录")
+                Text("FCX、网页今日计数与 EA 项目次数分开显示")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -418,6 +457,27 @@ private struct SbcStatsCard: View {
                 MetricTile(title: "累计整组", value: stats.totalSetsCompleted, subtitle: "完成次数", symbol: "trophy.fill")
                 MetricTile(title: "今日阵容", value: stats.todaySquadsSubmitted, subtitle: "成功提交", symbol: "person.3.fill")
                 MetricTile(title: "累计阵容", value: stats.totalSquadsSubmitted, subtitle: "成功提交", symbol: "sum")
+            }
+
+            HStack(spacing: 10) {
+                MetricTile(
+                    title: "网页今日提交",
+                    value: stats.webVisibleDailySbcCount ?? 0,
+                    subtitle: "读取网页已显示计数",
+                    symbol: "safari.fill"
+                )
+                MetricTile(
+                    title: "EA 当前可见",
+                    value: stats.eaVisibleSetsCompleted,
+                    subtitle: "包含 iOS 与手动完成",
+                    symbol: "iphone.and.arrow.forward"
+                )
+                MetricTile(
+                    title: "EA 同步后新增",
+                    value: stats.eaObservedSetsCompleted,
+                    subtitle: "仅统计确认的正向增量",
+                    symbol: "arrow.triangle.2.circlepath"
+                )
             }
 
             if stats.bySet.isEmpty {
@@ -439,6 +499,26 @@ private struct SbcStatsCard: View {
                         }
                         .padding(.vertical, 8)
                         if index < min(stats.bySet.count, 4) - 1 { Divider() }
+                    }
+                }
+            }
+
+            if !stats.eaBySet.filter(\.visible).isEmpty {
+                Divider()
+                Text("EA 账号当前项目")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                VStack(spacing: 0) {
+                    ForEach(Array(stats.eaBySet.filter(\.visible).prefix(4).enumerated()), id: \.element.id) { index, item in
+                        HStack {
+                            Text(item.setName).lineLimit(1)
+                            Spacer()
+                            Text("EA 已完成 \(item.timesCompleted) 次")
+                                .font(.callout.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 7)
+                        if index < min(stats.eaBySet.filter(\.visible).count, 4) - 1 { Divider() }
                     }
                 }
             }
@@ -537,6 +617,13 @@ private struct RootView: View {
         .frame(minWidth: 720, minHeight: 620)
         .onAppear { model.start() }
         .onDisappear { model.stop() }
+        .alert(item: $model.activeStopAlert) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: Text("停止原因：\n\(alert.reason)"),
+                dismissButton: .default(Text("知道了"))
+            )
+        }
     }
 
     private var ambientBackground: some View {

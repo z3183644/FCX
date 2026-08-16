@@ -25,6 +25,9 @@ class HealthCapabilityTest(unittest.TestCase):
         )
         self.assertEqual(payload["solver_features"]["sbc_activity_stats"], 1)
         self.assertEqual(payload["solver_features"]["natural_diagnostics"], 1)
+        self.assertEqual(payload["solver_features"]["offline_activity_sync"], 1)
+        self.assertEqual(payload["solver_features"]["ea_completion_snapshot"], 1)
+        self.assertEqual(payload["solver_features"]["sbc_stop_alert"], 1)
 
 
 if __name__ == "__main__":

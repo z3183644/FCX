@@ -100,7 +100,10 @@ async def get_solver_logs():
 
 @app.get("/diagnostics")
 async def get_diagnostics():
-    return {"items": diagnostics.diagnostics_for_logs(logger.solver_logs)}
+    return {
+        "items": diagnostics.diagnostics_for_logs(logger.solver_logs),
+        "stop_alert": diagnostics.latest_sbc_stop_alert(logger.solver_logs),
+    }
 
 
 @app.get("/stats")
@@ -119,6 +122,30 @@ async def record_sbc_event(request: Request):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.post("/stats/ea-snapshot")
+async def record_ea_sbc_snapshot(request: Request):
+    from fastapi import HTTPException
+
+    try:
+        snapshot = await request.json()
+        return await run_in_threadpool(activity_stats.record_ea_snapshot)(snapshot)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/diagnostics/client-event")
+async def record_client_diagnostic(request: Request):
+    from fastapi import HTTPException
+
+    body = await request.json()
+    code = str(body.get("code") or "").strip()[:80]
+    message = str(body.get("message") or "").strip()[:1000]
+    if not code or not message:
+        raise HTTPException(status_code=400, detail="code and message are required")
+    logger.add_log(f"WEB_CLIENT {code}: {message}")
+    return {"accepted": True}
+
+
 @app.get("/health")
 async def health():
     return {
@@ -131,6 +158,9 @@ async def health():
             "minimum_rating_first": 2,
             "sbc_activity_stats": 1,
             "natural_diagnostics": 1,
+            "offline_activity_sync": 1,
+            "ea_completion_snapshot": 1,
+            "sbc_stop_alert": 1,
         },
     }
 

@@ -3048,6 +3048,7 @@ let createSBCTab = async (force = false) => {
     nav.setAttribute("aria-label", uiText.navigation.autoSbc);
 
     const sbcData = force ? await refreshSbcCache() : await sbcSets();
+    syncEaSbcCompletionSnapshot(sbcData?.sets || []);
     const packGroups = await loadAutoSbcPackGroups();
     const submitSnapshot = getSubmissionSnapshot();
     const routineBtn = createNavButton(
@@ -3147,4 +3148,3 @@ let createSBCTab = async (force = false) => {
     return false;
   }
 };
-

@@ -696,11 +696,13 @@ let solveSBC = async (
       getSettings(sbcId, sbcData.challengeId, "autoSubmit")
     );
     let sbcSubmitted = false;
+    let submissionAttempted = false;
     if (
       (solveOutcome.statusCode == autoSubmitId || autoSubmitId == 1) &&
       autoSubmit &&
       !runtimeState.concepts
     ) {
+      submissionAttempted = true;
       const submissionRewards = getSbcSubmissionRewards(
         _challenge,
         sbcSet,
@@ -735,9 +737,23 @@ let solveSBC = async (
         );
       } catch (error) {
         console.error("Error submitting SBC:", error);
+        const submissionMessage = String(error?.message || error || "EA 未返回具体原因");
+        reportOperationStatus(
+          "SBC",
+          `方案已生成，但 EA 提交失败：${submissionMessage}`,
+          "error"
+        );
+        reportLocalClientDiagnostic("sbc_submission_failed", submissionMessage);
         hideLoader();
         sbcSubmitted = false;
       }
+    }
+    if (!sbcSubmitted && !submissionAttempted && autoSubmit) {
+      const skipReason = runtimeState.concepts
+        ? "方案包含概念球员"
+        : `自动提交策略不接受求解状态 ${solveOutcome.statusCode}`;
+      reportOperationStatus("SBC", `方案已生成，但未自动提交：${skipReason}`, "error");
+      reportLocalClientDiagnostic("sbc_submission_skipped", skipReason);
     }
     if (sbcSubmitted) {
       if (isTaskCancellationRequested()) {
@@ -874,6 +890,7 @@ let solveSBC = async (
       UINotificationType.NEGATIVE,
     ]);
     console.error("[FCX][SBC] Error in solveSBC", err);
+    reportLocalClientDiagnostic("sbc_runtime_failed", rawMessage);
     sbcExecution.stoppedReason = publicMessage;
     hideLoader();
   } finally {
@@ -1476,6 +1493,12 @@ let solveSbcSet = async (
     ]);
   } finally {
     execution.orchestrating = false;
+    if (
+      execution.stoppedReason &&
+      !/用户(?:结束|取消)/.test(execution.stoppedReason)
+    ) {
+      reportLocalClientDiagnostic("sbc_set_stopped", execution.stoppedReason);
+    }
     if (!suppressFinalUi) {
       runtimeState.activeSbcExecution = undefined;
       if (isNewExecution) releaseTaskOverlay();
@@ -1512,4 +1535,3 @@ let solveSbcSet = async (
   }
   return execution;
 };
-

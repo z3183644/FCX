@@ -33,11 +33,15 @@ def stats_path() -> Path:
 
 def _empty_state() -> dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 3,
         "total_squads_submitted": 0,
         "total_sets_completed": 0,
         "days": {},
         "by_set": {},
+        "ea_observed_sets_completed": 0,
+        "ea_by_set": {},
+        "ea_visible_set_ids": [],
+        "web_visible_daily_counts": {},
         "recent_event_ids": [],
     }
 
@@ -45,10 +49,18 @@ def _empty_state() -> dict[str, Any]:
 def _load(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+        if not isinstance(payload, dict) or payload.get("schema_version") not in {1, 2, 3}:
             return _empty_state()
         state = _empty_state()
         state.update(payload)
+        if payload.get("schema_version") in {1, 2}:
+            # Older builds treated the first snapshot and changing expiry values as
+            # new completions, which could multiply historical EA counts on every refresh.
+            state["ea_observed_sets_completed"] = 0
+            for item in state.get("ea_by_set", {}).values():
+                if isinstance(item, dict):
+                    item["observed_total"] = 0
+        state["schema_version"] = 3
         return state
     except (OSError, ValueError, TypeError, json.JSONDecodeError):
         return _empty_state()
@@ -66,6 +78,18 @@ def _write(path: Path, state: dict[str, Any]) -> None:
 
 def _now() -> datetime:
     return datetime.now().astimezone()
+
+
+def _event_time(value: Any, fallback: datetime) -> datetime:
+    if not value:
+        return fallback
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=fallback.tzinfo)
+        return parsed.astimezone()
+    except (TypeError, ValueError):
+        return fallback
 
 
 def _validated_text(value: Any, field: str, maximum: int = 160) -> str:
@@ -97,6 +121,26 @@ def _snapshot(state: dict[str, Any], now: datetime | None = None) -> dict[str, A
         key=lambda item: (item.get("last_activity_at") or "", item["set_name"]),
         reverse=True,
     )
+    visible_ids = {str(value) for value in state.get("ea_visible_set_ids", [])}
+    ea_sets = []
+    ea_visible_total = 0
+    for set_id, item in state.get("ea_by_set", {}).items():
+        visible = set_id in visible_ids
+        current_value = int(item.get("last_value", 0))
+        if visible:
+            ea_visible_total += current_value
+        ea_sets.append({
+            "set_id": set_id,
+            "set_name": item.get("set_name") or set_id,
+            "times_completed": current_value,
+            "observed_total": int(item.get("observed_total", 0)),
+            "visible": visible,
+            "last_seen_at": item.get("last_seen_at"),
+        })
+    ea_sets.sort(
+        key=lambda item: (item["visible"], item.get("last_seen_at") or ""),
+        reverse=True,
+    )
     return {
         "date": today_key,
         "today_squads_submitted": int(today.get("squads_submitted", 0)),
@@ -104,6 +148,12 @@ def _snapshot(state: dict[str, Any], now: datetime | None = None) -> dict[str, A
         "total_squads_submitted": int(state.get("total_squads_submitted", 0)),
         "total_sets_completed": int(state.get("total_sets_completed", 0)),
         "by_set": sets,
+        "ea_visible_sets_completed": ea_visible_total,
+        "ea_observed_sets_completed": int(state.get("ea_observed_sets_completed", 0)),
+        "ea_by_set": ea_sets,
+        "web_visible_daily_sbc_count": int(
+            state.get("web_visible_daily_counts", {}).get(today_key, 0)
+        ),
     }
 
 
@@ -127,7 +177,8 @@ def record_event(
         raise ValueError("event_type must be challenge_submitted or set_completed")
     set_id = _validated_text(event.get("set_id"), "set_id", 80)
     set_name = _validated_text(event.get("set_name") or set_id, "set_name")
-    current = now or _now()
+    received_at = now or _now()
+    current = _event_time(event.get("occurred_at"), received_at)
     day_key = current.date().isoformat()
     timestamp = current.isoformat(timespec="seconds")
     target = path or stats_path()
@@ -175,3 +226,74 @@ def record_event(
         snapshot["accepted"] = True
         snapshot["duplicate"] = False
         return snapshot
+
+
+def record_ea_snapshot(
+    snapshot: dict[str, Any],
+    *,
+    path: Path | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Merge the account-level completion counts currently visible from EA."""
+
+    entries = snapshot.get("sets")
+    if not isinstance(entries, list):
+        raise ValueError("sets must be a list")
+    if len(entries) > 1000:
+        raise ValueError("sets contains too many entries")
+    received_at = now or _now()
+    captured_at = _event_time(snapshot.get("captured_at"), received_at)
+    timestamp = captured_at.isoformat(timespec="seconds")
+    target = path or stats_path()
+
+    with _LOCK:
+        state = _load(target)
+        ea_by_set = state.setdefault("ea_by_set", {})
+        visible_ids = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                raise ValueError("each set must be an object")
+            set_id = _validated_text(entry.get("set_id"), "set_id", 80)
+            set_name = _validated_text(entry.get("set_name") or set_id, "set_name")
+            try:
+                value = max(0, int(entry.get("times_completed", 0)))
+            except (TypeError, ValueError) as exc:
+                raise ValueError("times_completed must be an integer") from exc
+            cycle_id = str(entry.get("cycle_id") or set_id)
+            is_new = set_id not in ea_by_set
+            item = ea_by_set.setdefault(set_id, {
+                "set_name": set_name,
+                "last_value": 0,
+                "observed_total": 0,
+                "cycle_id": cycle_id,
+            })
+            previous = int(item.get("last_value", 0))
+            # The first value is a historical baseline. A lower value means EA
+            # reset/recycled the project, so it also becomes a new baseline.
+            increase = 0 if is_new or value < previous else value - previous
+            item.update({
+                "set_name": set_name,
+                "last_value": value,
+                "observed_total": int(item.get("observed_total", 0)) + increase,
+                "cycle_id": cycle_id,
+                "last_seen_at": timestamp,
+            })
+            state["ea_observed_sets_completed"] = (
+                int(state.get("ea_observed_sets_completed", 0)) + increase
+            )
+            visible_ids.append(set_id)
+        state["ea_visible_set_ids"] = visible_ids
+        if "web_visible_daily_count" in snapshot:
+            try:
+                web_count = int(snapshot["web_visible_daily_count"])
+            except (TypeError, ValueError) as exc:
+                raise ValueError("web_visible_daily_count must be an integer") from exc
+            if web_count < 0:
+                raise ValueError("web_visible_daily_count must not be negative")
+            day_key = captured_at.date().isoformat()
+            daily = state.setdefault("web_visible_daily_counts", {})
+            daily[day_key] = max(int(daily.get(day_key, 0)), web_count)
+        _write(target, state)
+        result = _snapshot(deepcopy(state), received_at)
+        result["accepted"] = True
+        return result

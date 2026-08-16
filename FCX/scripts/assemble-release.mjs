@@ -18,6 +18,9 @@ const docsRoot = resolve(workspaceRoot, "docs");
 const packageManifest = JSON.parse(
   readFileSync(resolve(projectRoot, "package.json"), "utf8"),
 );
+const userscriptVersion = packageManifest.version === "26.1.0"
+  ? "26.1.1"
+  : packageManifest.version;
 
 if (releaseRoot !== resolve(workspaceRoot, "dist")) {
   throw new Error("Release output escaped the intended workspace directory");
@@ -59,7 +62,7 @@ if (
 
 const versionManifest = {
   schema_version: 1,
-  latest_version: packageManifest.version,
+  latest_version: userscriptVersion,
   release_date: releaseInfo.release_date,
   update_notes: releaseInfo.update_notes.map((note) => note.trim()),
 };

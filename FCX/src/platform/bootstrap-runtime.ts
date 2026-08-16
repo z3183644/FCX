@@ -150,6 +150,7 @@ const startFcxRuntime = () => {
     .then(() => harvestMoment.startRetryLoop())
     .catch((error) => console.warn("[FCX][Harvest] initialization failed", error));
   scriptRuntimeLogs.start();
+  startSbcActivitySync();
   const headerSupport = mountFcxHeaderSupport(document, {
     currentVersion: __FCX_SCRIPT_VERSION__,
     onVersionClick: () => void fcxVersionUpdateController?.checkManually(),
@@ -189,4 +190,3 @@ void ensureFcxDisclaimerAccepted(createGmValueAdapter(), document)
     startFcxRuntime();
   })
   .catch((error) => console.error("[FCX][Disclaimer] initialization failed", error));
-

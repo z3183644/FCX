@@ -32,7 +32,8 @@ describe("userscript release metadata", () => {
       "FCX 本地 SBC 求解、自动 SBC、球员保护与小程序远程控制工具",
     );
     expect(viteSource).toContain("icon: FCX_BRAND_ICON_DATA_URL");
-    expect(viteSource).toContain("version: packageManifest.version");
+    expect(viteSource).toContain('? "26.1.1"');
+    expect(viteSource).toContain("version: userscriptVersion");
     expect(viteSource).toContain(
       '"https://www.ea.com/ea-sports-fc/ultimate-team/web-app/*"',
     );
@@ -56,11 +57,11 @@ describe("userscript release metadata", () => {
     );
   });
 
-  it("generates the public update manifest from the package version", () => {
+  it("generates the public update manifest from the userscript version", () => {
     expect(releaseInfo.release_date).toBe("2026-08-15");
     expect(releaseInfo.update_notes.length).toBeGreaterThan(0);
     expect(releaseAssemblerSource).toContain(
-      "latest_version: packageManifest.version",
+      "latest_version: userscriptVersion",
     );
     expect(releaseAssemblerSource).toContain(
       'resolve(releaseRoot, "version.json")',

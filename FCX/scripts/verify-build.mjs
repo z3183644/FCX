@@ -5,9 +5,7 @@ import { spawnSync } from "node:child_process";
 const projectRoot = resolve(import.meta.dirname, "..");
 const distDir = resolve(projectRoot, "dist");
 const expectedName = "FCX.js";
-const packageManifest = JSON.parse(
-  readFileSync(resolve(projectRoot, "package.json"), "utf8"),
-);
+const userscriptVersion = "26.1.1";
 const files = readdirSync(distDir).filter((name) => !name.startsWith("."));
 
 if (files.length !== 1 || files[0] !== expectedName) {
@@ -19,7 +17,7 @@ const source = readFileSync(output, "utf8");
 const requiredFragments = [
   "// ==UserScript==",
   "// @name         一阵失心风FCX",
-  `// @version      ${packageManifest.version}`,
+  `// @version      ${userscriptVersion}`,
   "// @description  FCX 市面最先进滚卡，登录可享小程序。",
   "// @author       一阵失心风",
   "// @license      MIT",
@@ -75,8 +73,8 @@ const requiredFragments = [
   "fcx-pick-",
   "requestPendingPlayerPickItemSelection()",
   "confirmPlayerPickItemSelection(chosen)",
-  `script_version: "${packageManifest.version}"`,
-  `client_version: "${packageManifest.version}"`,
+  `script_version: "${userscriptVersion}"`,
+  `client_version: "${userscriptVersion}"`,
 ];
 
 for (const fragment of requiredFragments) {

@@ -9,10 +9,13 @@ const entryPath = resolve(rootDir, "src/main.ts");
 const packageManifest = JSON.parse(
   readFileSync(resolve(rootDir, "package.json"), "utf8"),
 ) as { version: string };
+const userscriptVersion = packageManifest.version === "26.1.0"
+  ? "26.1.1"
+  : packageManifest.version;
 const scriptMetadata = {
   name: "一阵失心风FCX",
   namespace: "http://tampermonkey.net/",
-  version: packageManifest.version,
+  version: userscriptVersion,
   description: "FCX 市面最先进滚卡，登录可享小程序。",
   author: "一阵失心风",
   license: "MIT",
@@ -175,7 +178,7 @@ import { refreshAcademyClubList } from "./domain/evolutions/academy-refresh";
 import { AcademyPreferencesStore } from "./state/academy-preferences-store";
 import { TaskHistoryStore } from "./state/task-history-store";
 import { buildTaskHistoryDiagnosticText, renderTaskHistoryDetail, taskHistoryLocalDateKey, taskHistoryStatusLabel, taskHistoryTypeLabel } from "./ui/task-history-view";
-import { createSbcActivityEvent, reportSbcActivity } from "./domain/sbc/activity-reporter";
+import { createEaSbcCompletionSnapshot, createSbcActivityEvent, readVisibleDailySbcCount, SbcActivityOutbox } from "./domain/sbc/activity-reporter";
 
 const runtimeState = new RuntimeState();
 const fcxSettingsStore = new SettingsStore(window.localStorage);
@@ -195,16 +198,47 @@ const fcxAcademyPreferences = new AcademyPreferencesStore(window.localStorage);
 const fcxTaskHistoryStore = new TaskHistoryStore(window.indexedDB);
 const fcxTaskShield = new EaTaskShieldController(window);
 const fcxSbcEaRequestGate = new EaRequestGate(900, [3000, 8000, 20000]);
+const fcxSbcActivityOutbox = new SbcActivityOutbox(window.localStorage);
+let lastEaSbcSets = [];
+const flushPendingSbcActivity = () => {
+  if (!fcxSbcActivityOutbox.hasPending()) return;
+  void fcxSbcActivityOutbox.flush(getSettings(0, 0, "backendPort"));
+};
+const startSbcActivitySync = () => {
+  flushPendingSbcActivity();
+  window.setInterval(() => {
+    const visibleCount = readVisibleDailySbcCount(document);
+    if (visibleCount !== undefined) {
+      fcxSbcActivityOutbox.saveEaSnapshot(
+        createEaSbcCompletionSnapshot(lastEaSbcSets, new Date().toISOString(), visibleCount)
+      );
+    }
+    flushPendingSbcActivity();
+  }, 15_000);
+};
+const syncEaSbcCompletionSnapshot = (sets) => {
+  lastEaSbcSets = Array.isArray(sets) ? sets : [];
+  fcxSbcActivityOutbox.saveEaSnapshot(
+    createEaSbcCompletionSnapshot(
+      lastEaSbcSets,
+      new Date().toISOString(),
+      readVisibleDailySbcCount(document)
+    )
+  );
+  flushPendingSbcActivity();
+};
 const reportConfirmedSbcActivity = (eventType, setId, setName) => {
   const event = createSbcActivityEvent(eventType, setId, setName);
-  void reportSbcActivity(
-    getSettings(0, 0, "backendPort"),
-    event
-  ).then((accepted) => {
-    if (!accepted) {
-      console.warn("[FCX][SBC] 本次成功记录未能写入后端统计", event);
-    }
-  });
+  fcxSbcActivityOutbox.enqueue(event);
+  flushPendingSbcActivity();
+};
+const reportLocalClientDiagnostic = (code, message) => {
+  const backendPort = normalizeBackendPort(getSettings(0, 0, "backendPort"));
+  void fetch(localBackendUrl(backendPort, "/diagnostics/client-event"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, message: String(message || "未知错误").slice(0, 1000) }),
+  }).catch(() => {});
 };
 const executeFcxEaRequest = (factory, label, options = {}) => {
   const config = normalizeEaRequestRetryConfig({
