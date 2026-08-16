@@ -12,16 +12,84 @@ const packageManifest = JSON.parse(
 const userscriptVersion = packageManifest.version === "26.1.0"
   ? "26.1.1"
   : packageManifest.version;
-const scriptMetadata = {
-  name: "一阵失心风FCX",
-  namespace: "http://tampermonkey.net/",
-  version: userscriptVersion,
-  description: "FCX 市面最先进滚卡，登录可享小程序。",
-  author: "一阵失心风",
-  license: "MIT",
-  homepageURL: "https://fczhushou.com",
-  icon: FCX_BRAND_ICON_DATA_URL,
-} as const;
+const GREASYFORK_REPOSITORY_URL = "https://github.com/titi14gj/FCX";
+const GREASYFORK_MANIFEST_URL =
+  "https://raw.githubusercontent.com/titi14gj/FCX/refs/heads/agent/add-macos-liquid-glass-client/FCX/greasyfork/version.json";
+
+interface ScriptMetadata {
+  name: string;
+  namespace: string;
+  version: string;
+  description: string;
+  author: string;
+  license: string;
+  homepageURL: string;
+  supportURL?: string;
+  sourceURL?: string;
+  antifeature?: string;
+  updateManifestURL: string;
+  autoUpdateCheck: boolean;
+  fileName: string;
+  outDir: string;
+  connectHosts: string[];
+  icon: string;
+}
+
+function createScriptMetadata(mode: string): ScriptMetadata {
+  const common = {
+    version: userscriptVersion,
+    license: "MIT",
+    icon: FCX_BRAND_ICON_DATA_URL,
+  } as const;
+  if (mode === "greasyfork") {
+    return {
+      ...common,
+      name: "FCX macOS 自用维护版（非官方）",
+      namespace: GREASYFORK_REPOSITORY_URL,
+      description:
+        "基于一阵失心风 FCX 的 macOS 非官方维护版，新增原生后端、SBC 统计、停止原因提醒与自然语言诊断。",
+      author: "titi14gj（维护）；一阵失心风（原作）",
+      homepageURL: GREASYFORK_REPOSITORY_URL,
+      supportURL: `${GREASYFORK_REPOSITORY_URL}/issues`,
+      sourceURL: GREASYFORK_REPOSITORY_URL,
+      antifeature:
+        "tracking 可选远程登录功能会向原 FCX 服务发送设备状态、任务状态和运行日志",
+      updateManifestURL: GREASYFORK_MANIFEST_URL,
+      autoUpdateCheck: false,
+      fileName: "FCX-macOS.user.js",
+      outDir: resolve(rootDir, "greasyfork"),
+      connectHosts: [
+        "www.fut.gg",
+        "enhancer-api.futnext.com",
+        "127.0.0.1",
+        "fc.fczhushou.com",
+        "fczhushou.com",
+        "raw.githubusercontent.com",
+        "ntfy.sh",
+      ],
+    };
+  }
+  return {
+    ...common,
+    name: "一阵失心风FCX",
+    namespace: "http://tampermonkey.net/",
+    description: "FCX 市面最先进滚卡，登录可享小程序。",
+    author: "一阵失心风",
+    homepageURL: "https://fczhushou.com",
+    updateManifestURL: "https://fczhushou.com/fcx/version.json",
+    autoUpdateCheck: true,
+    fileName: "FCX.js",
+    outDir: resolve(rootDir, "dist"),
+    connectHosts: [
+      "www.fut.gg",
+      "enhancer-api.futnext.com",
+      "127.0.0.1",
+      "fc.fczhushou.com",
+      "fczhushou.com",
+      "ntfy.sh",
+    ],
+  };
+}
 
 const runtimeFiles = [
   "src/ui/base-runtime.ts",
@@ -40,7 +108,22 @@ const runtimeFiles = [
   "src/platform/bootstrap-runtime.ts",
 ].map((path) => resolve(rootDir, path));
 
-const userscriptHeader = `// ==UserScript==
+function createUserscriptHeader(scriptMetadata: ScriptMetadata): string {
+  const optionalMetadata = [
+    scriptMetadata.supportURL
+      ? `// @supportURL   ${scriptMetadata.supportURL}`
+      : "",
+    scriptMetadata.sourceURL
+      ? `// @source       ${scriptMetadata.sourceURL}`
+      : "",
+    scriptMetadata.antifeature
+      ? `// @antifeature  ${scriptMetadata.antifeature}`
+      : "",
+  ].filter(Boolean).join("\n");
+  const connectMetadata = scriptMetadata.connectHosts
+    .map((host) => `// @connect      ${host}`)
+    .join("\n");
+  return `// ==UserScript==
 // @name         ${scriptMetadata.name}
 // @namespace    ${scriptMetadata.namespace}
 // @version      ${scriptMetadata.version}
@@ -48,6 +131,7 @@ const userscriptHeader = `// ==UserScript==
 // @author       ${scriptMetadata.author}
 // @license      ${scriptMetadata.license}
 // @homepageURL  ${scriptMetadata.homepageURL}
+${optionalMetadata}
 // @icon         ${scriptMetadata.icon}
 // @icon64       ${scriptMetadata.icon}
 // @match        https://www.ea.com/ea-sports-fc/ultimate-team/web-app/*
@@ -59,14 +143,10 @@ const userscriptHeader = `// ==UserScript==
 // @grant        GM_setValue
 // @grant        GM_deleteValue
 // @grant        unsafeWindow
-// @connect      www.fut.gg
-// @connect      enhancer-api.futnext.com
-// @connect      127.0.0.1
-// @connect      fc.fczhushou.com
-// @connect      fczhushou.com
-// @connect      ntfy.sh
+${connectMetadata}
 
 // ==/UserScript==`;
+}
 
 function orderedRuntime(): Plugin {
   return {
@@ -486,9 +566,19 @@ ${body}
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const scriptMetadata = createScriptMetadata(mode);
+  const userscriptHeader = createUserscriptHeader(scriptMetadata);
+  return {
   define: {
     __FCX_SCRIPT_VERSION__: JSON.stringify(scriptMetadata.version),
+    __FCX_UPDATE_MANIFEST_URL__: JSON.stringify(
+      scriptMetadata.updateManifestURL,
+    ),
+    __FCX_UPDATE_HOMEPAGE_URL__: JSON.stringify(scriptMetadata.homepageURL),
+    __FCX_AUTO_UPDATE_CHECK__: JSON.stringify(
+      scriptMetadata.autoUpdateCheck,
+    ),
   },
   plugins: [
     orderedRuntime(),
@@ -517,21 +607,14 @@ export default defineConfig({
           "GM_deleteValue",
           "unsafeWindow",
         ],
-        connect: [
-          "www.fut.gg",
-          "enhancer-api.futnext.com",
-          "127.0.0.1",
-          "fc.fczhushou.com",
-          "fczhushou.com",
-          "ntfy.sh",
-        ],
+        connect: scriptMetadata.connectHosts,
       },
       generate: () => userscriptHeader,
       server: {
         open: false,
       },
       build: {
-        fileName: "FCX.js",
+        fileName: scriptMetadata.fileName,
         autoGrant: false,
         metaFileName: false,
       },
@@ -541,6 +624,8 @@ export default defineConfig({
     target: "es2022",
     minify: false,
     sourcemap: false,
-    emptyOutDir: true,
+    outDir: scriptMetadata.outDir,
+    emptyOutDir: mode !== "greasyfork",
   },
+  };
 });

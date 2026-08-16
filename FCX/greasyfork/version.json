@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "latest_version": "26.1.1",
+  "release_date": "2026-08-16",
+  "update_notes": [
+    "新增原生 macOS 后端与 Liquid Glass 界面。",
+    "新增可靠的 SBC 完成统计与浏览器离线补报。",
+    "新增停止原因提醒和自然语言诊断。"
+  ]
+}

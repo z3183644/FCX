@@ -34,6 +34,13 @@ jobs:
       - name: Run complete FCX checks
         run: npm run check
 
+      - name: Build Greasy Fork distribution
+        run: npm run build:greasyfork
+
+      - name: Verify committed Greasy Fork distribution
+        working-directory: ${{ github.workspace }}
+        run: git diff --exit-code -- FCX/greasyfork
+
   backend:
     strategy:
       matrix:

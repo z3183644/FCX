@@ -162,7 +162,9 @@ const startFcxRuntime = () => {
     header: headerSupport,
     documentRef: document,
   });
-  void fcxVersionUpdateController.checkAutomatically();
+  if (__FCX_AUTO_UPDATE_CHECK__) {
+    void fcxVersionUpdateController.checkAutomatically();
+  }
   void fcxRoutineCatalogController.loadOnce();
   // The Store view is available before every EA service finishes loading.
   // Install this UI-only hook independently so owned-pack actions are not

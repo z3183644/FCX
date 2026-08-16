@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:bundle": "vite build",
+    "build:greasyfork": "vite build --mode greasyfork && node scripts/verify-greasyfork-build.mjs",
     "build": "npm run typecheck && npm run build:bundle && node scripts/verify-build.mjs && node scripts/assemble-release.mjs",
     "check": "npm run typecheck && npm run test && npm run build:bundle && node scripts/verify-build.mjs && node scripts/assemble-release.mjs"
   },

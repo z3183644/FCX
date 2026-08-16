@@ -28,6 +28,9 @@ export type GmCompatRequest = (options: GmCompatRequestOptions) => void;
 
 declare global {
   const __FCX_SCRIPT_VERSION__: string;
+  const __FCX_UPDATE_MANIFEST_URL__: string;
+  const __FCX_UPDATE_HOMEPAGE_URL__: string;
+  const __FCX_AUTO_UPDATE_CHECK__: boolean;
   function GM_getValue<T>(key: string, defaultValue?: T): T | Promise<T>;
   function GM_setValue<T>(key: string, value: T): void | Promise<void>;
   function GM_deleteValue(key: string): void | Promise<void>;

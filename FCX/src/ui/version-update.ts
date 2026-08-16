@@ -10,7 +10,7 @@ import type { FcxHeaderSupportHandle } from "./support";
 
 export const FCX_UPDATE_PROMPT_STORAGE_KEY = "fcx.update.lastPrompt";
 export const FCX_UPDATE_PROMPT_INTERVAL_MS = 24 * 60 * 60 * 1_000;
-export const FCX_UPDATE_HOMEPAGE_URL = "https://fczhushou.com/";
+export const FCX_UPDATE_HOMEPAGE_URL = __FCX_UPDATE_HOMEPAGE_URL__;
 
 interface UpdatePromptRecord {
   targetVersion: string;

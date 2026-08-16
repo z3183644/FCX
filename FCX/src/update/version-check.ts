@@ -5,7 +5,7 @@ import type {
 } from "../types/userscript";
 
 export const FCX_VERSION_MANIFEST_URL =
-  "https://fczhushou.com/fcx/version.json";
+  __FCX_UPDATE_MANIFEST_URL__;
 export const FCX_VERSION_CHECK_TIMEOUT_MS = 6_000;
 
 export interface FcxVersionManifest {

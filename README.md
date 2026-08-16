@@ -12,6 +12,7 @@ FCX 是面向 EA SPORTS FC Ultimate Team Web App 的 Tampermonkey 用户脚本�
 - [用户指南](docs/USER_GUIDE.md)：安装、兼容性、功能说明、常见问题和故障排查。
 - [开发者文档](docs/DEVELOPMENT.md)：架构、本地接口、测试、构建和发布。
 - [隐私说明](docs/PRIVACY.md)：本地数据、远程账号和第三方请求边界。
+- [Greasy Fork 公开说明](docs/GREASYFORK_DESCRIPTION.md)：macOS 非官方维护版的署名、差异和网络说明。
 - [贡献指南](CONTRIBUTING.md)：分支、代码规范、测试要求和 Pull Request 清单。
 - [安全策略](SECURITY.md)：安全边界和私密漏洞报告方式。
 - [变更记录](CHANGELOG.md)：当前及历史版本的重要变化。
@@ -37,6 +38,15 @@ npm run check
 ```
 
 `npm run check` 会依次运行 TypeScript 检查、完整测试、用户脚本构建、单文件校验和发布产物校验。
+
+为 Greasy Fork 生成具有独立名称、命名空间和更新源的公开维护版：
+
+```shell
+cd FCX
+npm run build:greasyfork
+```
+
+产物位于 `FCX/greasyfork/FCX-macOS.user.js`。该文件保持非压缩形式并提交到 Git，供 Greasy Fork 源码同步使用；它不会覆盖原版 `FCX.js`。
 
 后端验证和本机构建：
 
