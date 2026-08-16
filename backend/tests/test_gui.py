@@ -34,6 +34,10 @@ class GuiHelpersTest(unittest.TestCase):
         self.assertIn("glassEffect(.regular", source)
         self.assertIn("buttonStyle(.glassProminent)", source)
         self.assertIn('environment["FCX_GUI_PARENT_PID"]', source)
+        self.assertIn('environment["FCX_BACKEND_DATA_DIR"]', source)
+        self.assertIn('Label("SBC 完成统计", systemImage: "soccerball")', source)
+        self.assertIn('Label("智能诊断", systemImage: "stethoscope")', source)
+        self.assertIn('Button("复制技术详情", systemImage: "doc.on.doc")', source)
 
         server_entry = (BACKEND / "server_entry.py").read_text(encoding="utf-8")
         self.assertIn('os.getenv("FCX_GUI_PARENT_PID"', server_entry)

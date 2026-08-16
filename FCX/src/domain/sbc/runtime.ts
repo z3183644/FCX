@@ -728,6 +728,11 @@ let solveSBC = async (
         });
         registerSubmittedSbcRewards(sbcExecution, submissionRewards);
         sbcSubmitted = true;
+        reportConfirmedSbcActivity(
+          "challenge_submitted",
+          sbcId,
+          sbcData.sbcName || sbcId
+        );
       } catch (error) {
         console.error("Error submitting SBC:", error);
         hideLoader();
@@ -753,7 +758,14 @@ let solveSBC = async (
       )) {
         goToPacks();
       }
-      if (sbcData.finalSBC) sbcExecution.completedRuns += 1;
+      if (sbcData.finalSBC) {
+        sbcExecution.completedRuns += 1;
+        reportConfirmedSbcActivity(
+          "set_completed",
+          sbcId,
+          sbcData.sbcName || sbcId
+        );
+      }
       const requestedLabel =
         sbcExecution.options.requestedRuns === -1
           ? "持续执行"
@@ -1052,6 +1064,11 @@ const submitPlannedSbcChallenge = async (
       String(services.Localization.localize("item.raretype" + rareflag) || rareflag),
   });
   await sbcSubmit(controller._challenge, live.set);
+  reportConfirmedSbcActivity(
+    "challenge_submitted",
+    setId,
+    live.set?.name || planned.payload?.setName || setId
+  );
   removeSubmittedPlayersFromInventorySnapshot(planned.payload.solutionSquad);
   addSbcSubmission(execution.packSummary, {
     setId: Number(setId),
@@ -1398,6 +1415,11 @@ let solveSbcSet = async (
         sbcId,
         previousTimesCompleted
       );
+      reportConfirmedSbcActivity(
+        "set_completed",
+        sbcId,
+        state.set.name || sbcId
+      );
       execution.completedRuns += 1;
       const requestedLabel =
         execution.options.requestedRuns === -1
@@ -1490,5 +1512,4 @@ let solveSbcSet = async (
   }
   return execution;
 };
-
 

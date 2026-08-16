@@ -175,6 +175,7 @@ import { refreshAcademyClubList } from "./domain/evolutions/academy-refresh";
 import { AcademyPreferencesStore } from "./state/academy-preferences-store";
 import { TaskHistoryStore } from "./state/task-history-store";
 import { buildTaskHistoryDiagnosticText, renderTaskHistoryDetail, taskHistoryLocalDateKey, taskHistoryStatusLabel, taskHistoryTypeLabel } from "./ui/task-history-view";
+import { createSbcActivityEvent, reportSbcActivity } from "./domain/sbc/activity-reporter";
 
 const runtimeState = new RuntimeState();
 const fcxSettingsStore = new SettingsStore(window.localStorage);
@@ -194,6 +195,17 @@ const fcxAcademyPreferences = new AcademyPreferencesStore(window.localStorage);
 const fcxTaskHistoryStore = new TaskHistoryStore(window.indexedDB);
 const fcxTaskShield = new EaTaskShieldController(window);
 const fcxSbcEaRequestGate = new EaRequestGate(900, [3000, 8000, 20000]);
+const reportConfirmedSbcActivity = (eventType, setId, setName) => {
+  const event = createSbcActivityEvent(eventType, setId, setName);
+  void reportSbcActivity(
+    getSettings(0, 0, "backendPort"),
+    event
+  ).then((accepted) => {
+    if (!accepted) {
+      console.warn("[FCX][SBC] 本次成功记录未能写入后端统计", event);
+    }
+  });
+};
 const executeFcxEaRequest = (factory, label, options = {}) => {
   const config = normalizeEaRequestRetryConfig({
     maxAttempts: fcxSettingsStore.getValue(0, 0, "eaRequestMaxAttempts"),

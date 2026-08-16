@@ -13,6 +13,14 @@ python backend/gui.py
 
 默认监听 `127.0.0.1:8000`。GUI 中修改端口后，需要在 FCX 设置中使用相同端口。
 
+桌面界面会统计 FCX 自动提交且 EA 已确认成功的 SBC 操作。阵容提交数与整组完成数分开计算，并提供今日、累计和各 SBC 明细；重复上报会按事件 ID 去重。macOS 数据保存在 `~/Library/Application Support/FCXBackend/sbc-stats.json`，不会写入应用包。诊断区默认显示自然语言结论与建议，原始运行日志仍可在“技术详情”中查看和复制。
+
+新增的本地接口为：
+
+- `GET /stats`：读取 SBC 统计快照。
+- `POST /stats/sbc-event`：记录一条已确认事件。
+- `GET /diagnostics`：读取由本地规则生成的自然语言诊断。
+
 ## 测试
 
 ```powershell

@@ -9,7 +9,9 @@
 - 新增 Apple Silicon 与 Intel Mac 的本地后端应用构建、测试和 Release 产物。
 - macOS 使用标准 Application Support 与 Logs 目录保存端口设置和求解器日志。
 - macOS 前端改为原生 SwiftUI，并采用系统 Liquid Glass、原生控件和独立的后台服务生命周期。
-- 为 macOS 重绘 1024 像素 Liquid Glass 应用图标，以青蓝玻璃足球和战术轨迹突出 FCX 的足球助手定位。
+- 基于上游 FCX 原版足球标志重绘 1024 像素 Liquid Glass macOS 应用图标，保持官网与桌面端的品牌一致性。
+- 新增 FCX 自动提交成功统计，分别展示今日/累计的阵容提交数、整组完成数和各 SBC 明细；事件经唯一 ID 去重并持久化到系统应用数据目录。
+- 新增自然语言诊断，把常见求解进度、失败条件和处理建议直接展示给普通用户，同时保留可展开、可复制的技术详情。
 
 ### Fixed
 

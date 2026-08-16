@@ -7,6 +7,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 import logger  # Import the logger module
+import activity_stats
+import diagnostics
 import requests
 import setup
 import uvicorn
@@ -96,6 +98,27 @@ async def get_solver_logs():
     return await run_in_threadpool(get_logs)()
 
 
+@app.get("/diagnostics")
+async def get_diagnostics():
+    return {"items": diagnostics.diagnostics_for_logs(logger.solver_logs)}
+
+
+@app.get("/stats")
+async def get_activity_stats():
+    return await run_in_threadpool(activity_stats.get_stats)()
+
+
+@app.post("/stats/sbc-event")
+async def record_sbc_event(request: Request):
+    from fastapi import HTTPException
+
+    try:
+        event = await request.json()
+        return await run_in_threadpool(activity_stats.record_event)(event)
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.get("/health")
 async def health():
     return {
@@ -106,6 +129,8 @@ async def health():
         "solver_features": {
             "strict_rating_window": 1,
             "minimum_rating_first": 2,
+            "sbc_activity_stats": 1,
+            "natural_diagnostics": 1,
         },
     }
 
