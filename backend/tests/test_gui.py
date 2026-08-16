@@ -29,7 +29,6 @@ class GuiHelpersTest(unittest.TestCase):
         )
         self.assertIn('xcrun swiftc "$swift_source"', script)
         self.assertIn('resources/icon-macos.png', script)
-        self.assertIn('FCX_MACOS_VERSION', script)
         self.assertIn('"$backend_dir/server_entry.py"', script)
         self.assertIn("import SwiftUI", source)
         self.assertIn("glassEffect(.regular", source)

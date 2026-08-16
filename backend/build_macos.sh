@@ -28,12 +28,7 @@ if [[ ! -f "$swift_source" ]]; then
   echo "Missing macOS UI source: $swift_source" >&2
   exit 1
 fi
-manifest_version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])' "$version_manifest")"
-app_version="${FCX_MACOS_VERSION:-$manifest_version}"
-if [[ ! "$app_version" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
-  echo "Invalid macOS app version: $app_version" >&2
-  exit 1
-fi
+app_version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])' "$version_manifest")"
 
 rm -rf "$iconset_dir" "$pyinstaller_dist" "$assembled_app_dir" "$signed_app_dir" "$release_dir"
 mkdir -p "$iconset_dir" "$release_dir"
