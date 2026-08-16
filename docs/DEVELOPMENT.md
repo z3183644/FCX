@@ -43,11 +43,22 @@ npm ci
 
 ### 本地后端
 
-推荐 Windows 10/11、Python 3.11 和 PowerShell 5.1+。
+推荐 Windows 10/11 或 macOS、Python 3.11；Windows 构建还需要 PowerShell 5.1+。
+
+macOS 桌面前端位于 `backend/macos/`，使用 SwiftUI 和系统 Liquid Glass；Python 后端以独立子进程嵌入 `.app`。构建需要带 macOS 26 SDK 的 Xcode Command Line Tools，部署目标仍为 macOS 13 或更高版本。
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt -r requirements-build.txt pytest
+```
+
+macOS：
+
+```shell
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt -r requirements-build.txt pytest
 ```
@@ -80,12 +91,14 @@ powershell -ExecutionPolicy Bypass -File backend/build_gui.ps1
 FCX/dist/FCX.js
 dist/FCX.js
 dist/FCX后端.exe
+build/macos-release/FCX后端-macOS-arm64.zip
+build/macos-release/FCX后端-macOS-x86_64.zip
 dist/version.json
 dist/routines.json
 dist/SHA256SUMS.txt
 ```
 
-根目录 `dist/` 和 EXE 被 Git 忽略，不应手动提交。
+根目录 `dist/`、`build/` 和生成的桌面程序都被 Git 忽略，不应手动提交。
 
 ## 仓库与模块结构
 
@@ -419,7 +432,7 @@ FCX 包含不可逆写操作，测试必须覆盖成功、失败、取消、状�
 
 ### 完整检查
 
-```powershell
+```shell
 git diff --check
 
 cd FCX
@@ -429,11 +442,12 @@ npm run check
 cd ..
 python -m pytest backend/tests -q
 powershell -ExecutionPolicy Bypass -File backend/build_gui.ps1
+./backend/build_macos.sh  # 在 macOS 上运行
 node FCX/scripts/assemble-release.mjs
 git status --short
 ```
 
-启动新 EXE，验证 `/health` 和一个小型 `/solve` 请求。结束后确认没有旧进程继续监听同一端口。
+启动新 EXE 或 macOS 应用，验证 `/health` 和一个小型 `/solve` 请求。结束后确认没有旧进程继续监听同一端口。
 
 ### 标签与 GitHub Release
 
@@ -443,10 +457,12 @@ git tag -a v26.1.0 -m "FCX 26.1.0"
 git push origin v26.1.0
 ```
 
-`v*` 标签触发 Release 工作流，重新安装依赖、运行测试、构建 Windows EXE、生成 SHA256 和发布以下文件：
+`v*` 标签触发 Release 工作流，重新安装依赖、在 Windows 与 macOS 上运行后端测试，并构建对应架构的桌面程序。macOS 构建使用原生 runner，避免把单架构的 Python/OR-Tools 二进制错误合并为伪通用包。发布文件包括：
 
 - `FCX.js`
 - `FCX后端.exe`
+- `FCX后端-macOS-arm64.zip` 及同名 `.sha256`
+- `FCX后端-macOS-x86_64.zip` 及同名 `.sha256`
 - `routines.json`
 - `version.json`
 - `SHA256SUMS.txt`

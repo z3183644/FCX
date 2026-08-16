@@ -8,7 +8,7 @@
 
 主要支持：
 
-- Windows 10/11。
+- Windows 10/11，或仍受 Apple 安全更新支持的 macOS 版本。
 - 最新稳定版 Chrome 或 Edge。
 - Tampermonkey。
 - EA Ultimate Team Web App 桌面浏览器版本。
@@ -37,10 +37,12 @@ https://www.ea.com/*/ea-sports-fc/ultimate-team/web-app/*
 
 ### 安装本地后端
 
-1. 下载同一 Release 中的 `FCX后端.exe`。
-2. 使用 Release 提供的 `SHA256SUMS.txt` 核对文件。
-3. 启动 EXE，确认本地服务已启动。
+1. 下载同一 Release 中与系统匹配的后端：Windows 使用 `FCX后端.exe`；Apple Silicon Mac 使用 `FCX后端-macOS-arm64.zip`；Intel Mac 使用 `FCX后端-macOS-x86_64.zip`。
+2. Windows 使用 Release 提供的 `SHA256SUMS.txt` 核对文件；macOS 压缩包使用同名 `.sha256` 文件，可在下载目录运行 `shasum -a 256 -c <文件名>.sha256` 核对。
+3. Windows 直接启动 EXE；macOS 解压后把 `FCX后端.app` 移到“应用程序”目录并打开，确认本地服务已启动。
 4. 默认端口为 `8000`；修改端口后，FCX 设置必须填写相同端口。
+
+macOS 版目前是未公证的开源构建。若首次打开时被 Gatekeeper 阻止，请在 Finder 中按住 Control 点击应用并选择“打开”，核对来源和 SHA256 后再次确认；不要关闭系统的全局安全检查。
 
 本地后端只应在用户电脑运行，不要绑定公网地址、配置公网反向代理或转发端口。
 
@@ -50,7 +52,7 @@ https://www.ea.com/*/ea-sports-fc/ultimate-team/web-app/*
 
 1. 停止正在执行的任务。
 2. 下载并覆盖安装最新完整 `FCX.js`。
-3. 如果公告要求，同时替换 `FCX后端.exe`。
+3. 如果公告要求，同时替换对应系统的 FCX 后端。
 4. 刷新 EA Web App。
 
 覆盖安装通常不会清除设置；清除 EA 站点数据、Tampermonkey 存储或浏览器配置可能删除设置和登录状态。

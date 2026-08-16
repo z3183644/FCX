@@ -47,9 +47,9 @@
 
 本地后端建议：
 
-- Windows 10/11
+- Windows 10/11 或 macOS
 - Python 3.11
-- PowerShell 5.1 或更高版本
+- Windows 构建需要 PowerShell 5.1 或更高版本
 
 安装依赖：
 
@@ -158,6 +158,8 @@ powershell -ExecutionPolicy Bypass -File backend/build_gui.ps1
 ```
 
 并启动 EXE 验证 `/health`。
+
+涉及 macOS 应用、端口或 GUI 时还应在 Mac 上执行 `./backend/build_macos.sh`，解压生成的 ZIP，启动应用并验证 `/health`。
 
 测试应覆盖成功、失败、取消、状态不确定和重复调用。修复 Bug 时应先添加能复现问题的测试，再验证修复。
 

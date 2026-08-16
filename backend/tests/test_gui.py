@@ -9,12 +9,43 @@ from unittest.mock import MagicMock, patch
 
 
 BACKEND = Path(__file__).resolve().parents[1]
+REPOSITORY = BACKEND.parent
 sys.path.insert(0, str(BACKEND))
 
 import gui
 
 
 class GuiHelpersTest(unittest.TestCase):
+    def test_pyinstaller_hook_collects_ttkbootstrap_theme_assets(self):
+        hook = (
+            REPOSITORY / "pyinstaller_hooks" / "hook-ttkbootstrap.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn('collect_data_files("ttkbootstrap")', hook)
+
+    def test_macos_build_uses_native_swiftui_frontend(self):
+        script = (BACKEND / "build_macos.sh").read_text(encoding="utf-8")
+        source = (BACKEND / "macos" / "FCXBackendApp.swift").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('xcrun swiftc "$swift_source"', script)
+        self.assertIn('resources/icon-macos.png', script)
+        self.assertIn('"$backend_dir/server_entry.py"', script)
+        self.assertIn("import SwiftUI", source)
+        self.assertIn("glassEffect(.regular", source)
+        self.assertIn("buttonStyle(.glassProminent)", source)
+        self.assertIn('environment["FCX_GUI_PARENT_PID"]', source)
+
+        server_entry = (BACKEND / "server_entry.py").read_text(encoding="utf-8")
+        self.assertIn('os.getenv("FCX_GUI_PARENT_PID"', server_entry)
+        self.assertIn("os.getppid() != expected_parent", server_entry)
+
+    def test_macos_icon_is_an_opaque_1024_pixel_png(self):
+        icon = (BACKEND / "resources" / "icon-macos.png").read_bytes()
+        self.assertEqual(icon[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertEqual(int.from_bytes(icon[16:20], "big"), 1024)
+        self.assertEqual(int.from_bytes(icon[20:24], "big"), 1024)
+        self.assertEqual(icon[25], 2)  # Truecolor RGB, without an alpha channel.
+
     def test_source_server_command_relaunches_gui_entry_with_port(self):
         command = gui.server_command(9123)
         self.assertEqual(command[0], sys.executable)
@@ -26,6 +57,37 @@ class GuiHelpersTest(unittest.TestCase):
             gui.resource_path("resources/ico.ico"),
             BACKEND / "resources" / "ico.ico",
         )
+        self.assertEqual(
+            gui.resource_path("resources/icon.png"),
+            BACKEND / "resources" / "icon.png",
+        )
+
+    def test_macos_uses_standard_application_support_and_log_directories(self):
+        with patch.object(gui.sys, "platform", "darwin"), patch.object(
+            gui.Path, "home", return_value=Path("/Users/tester")
+        ):
+            self.assertEqual(
+                gui.application_data_dir(),
+                Path("/Users/tester/Library/Application Support/FCXBackend"),
+            )
+            self.assertEqual(
+                gui.application_log_dir(),
+                Path("/Users/tester/Library/Logs/FCXBackend"),
+            )
+            self.assertEqual(gui.ui_font_family(), "PingFang SC")
+            self.assertEqual(gui.monospace_font_family(), "Menlo")
+
+    def test_windows_keeps_local_app_data_layout(self):
+        with patch.object(gui.sys, "platform", "win32"), patch.dict(
+            gui.os.environ, {"LOCALAPPDATA": "C:/LocalAppData"}
+        ):
+            self.assertEqual(
+                gui.application_data_dir(), Path("C:/LocalAppData/FCXBackend")
+            )
+            self.assertEqual(
+                gui.application_log_dir(),
+                Path("C:/LocalAppData/FCXBackend/logs"),
+            )
 
     def test_port_settings_round_trip_and_invalid_files_fall_back(self):
         with tempfile.TemporaryDirectory() as directory:

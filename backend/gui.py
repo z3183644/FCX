@@ -49,14 +49,35 @@ CHINESE_LEVELS = {
 }
 
 
+def application_data_dir() -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "FCXBackend"
+    if sys.platform == "win32":
+        return Path(os.getenv("LOCALAPPDATA", Path.home())) / "FCXBackend"
+    return Path(os.getenv("XDG_CONFIG_HOME", Path.home() / ".config")) / "FCXBackend"
+
+
+def application_log_dir() -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Logs" / "FCXBackend"
+    return application_data_dir() / "logs"
+
+
+def ui_font_family() -> str:
+    return "PingFang SC" if sys.platform == "darwin" else "Microsoft YaHei UI"
+
+
+def monospace_font_family() -> str:
+    return "Menlo" if sys.platform == "darwin" else "Consolas"
+
+
 def resource_path(relative: str) -> Path:
     base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
     return base / relative
 
 
 def settings_path() -> Path:
-    base = Path(os.getenv("LOCALAPPDATA", Path.home())) / "FCXBackend"
-    return base / "settings.json"
+    return application_data_dir() / "settings.json"
 
 
 def validate_port(value: object) -> int:
@@ -248,9 +269,7 @@ class BackendProcessController:
         env = os.environ.copy()
         env["FCX_GUI_SHUTDOWN_TOKEN"] = self.shutdown_token
         env["FCX_GUI_INSTANCE_TOKEN"] = self.instance_token
-        env["FCX_SOLVER_LOG_DIR"] = str(
-            Path(os.getenv("LOCALAPPDATA", Path.home())) / "FCXBackend" / "logs"
-        )
+        env["FCX_SOLVER_LOG_DIR"] = str(application_log_dir())
         env["PYTHONUNBUFFERED"] = "1"
         env["PYTHONUTF8"] = "1"
         env["PYTHONIOENCODING"] = "utf-8"
@@ -324,7 +343,15 @@ class BackendWindow:
         self.root.minsize(*COLLAPSED_MIN_SIZE)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
         icon = resource_path("resources/ico.ico")
-        if icon.exists():
+        if sys.platform == "darwin":
+            png_icon = resource_path("resources/icon.png")
+            if png_icon.exists():
+                try:
+                    self._window_icon = tk.PhotoImage(file=str(png_icon))
+                    self.root.iconphoto(True, self._window_icon)
+                except tk.TclError:
+                    pass
+        elif icon.exists():
             try:
                 self.root.iconbitmap(str(icon))
             except tk.TclError:
@@ -348,15 +375,15 @@ class BackendWindow:
         heading.pack(fill="x")
         copy = ttk.Frame(heading)
         copy.pack(side="left", fill="x", expand=True)
-        ttk.Label(copy, text="FCX 本地求解后端", font=("Microsoft YaHei UI", 17, "bold")).pack(anchor="w")
+        ttk.Label(copy, text="FCX 本地求解后端", font=(ui_font_family(), 17, "bold")).pack(anchor="w")
         self.endpoint_label = ttk.Label(copy, text="", bootstyle="secondary")
         self.endpoint_label.pack(anchor="w", pady=(4, 0))
-        self.status_label = ttk.Label(heading, text="", padding=(12, 6), font=("Microsoft YaHei UI", 10, "bold"))
+        self.status_label = ttk.Label(heading, text="", padding=(12, 6), font=(ui_font_family(), 10, "bold"))
         self.status_label.pack(side="right")
 
         port_panel = ttk.Frame(shell, padding=(14, 12), bootstyle="light")
         port_panel.pack(fill="x", pady=(18, 6))
-        ttk.Label(port_panel, text="本地端口", font=("Microsoft YaHei UI", 10, "bold")).pack(side="left")
+        ttk.Label(port_panel, text="本地端口", font=(ui_font_family(), 10, "bold")).pack(side="left")
         self.port_value = tk.StringVar(value=str(self.port))
         ttk.Entry(port_panel, textvariable=self.port_value, width=9).pack(side="left", padx=(14, 10))
         ttk.Button(
@@ -373,7 +400,7 @@ class BackendWindow:
 
         toolbar = ttk.Frame(shell)
         toolbar.pack(fill="x", pady=(12, 8))
-        ttk.Label(toolbar, text="详细日志", font=("Microsoft YaHei UI", 11, "bold")).pack(side="left")
+        ttk.Label(toolbar, text="详细日志", font=(ui_font_family(), 11, "bold")).pack(side="left")
         self.retry_button = ttk.Button(toolbar, text="重试启动", bootstyle="success-outline", command=self.retry, state="disabled")
         self.retry_button.pack(side="right")
         self.toggle_logs_button = ttk.Button(
@@ -395,7 +422,7 @@ class BackendWindow:
             insertbackground="#26343b",
             relief="solid",
             borderwidth=1,
-            font=("Consolas", 9),
+            font=(monospace_font_family(), 9),
         )
         scroll = ttk.Scrollbar(self.log_frame, orient="vertical", command=self.log.yview)
         self.log.configure(yscrollcommand=scroll.set)

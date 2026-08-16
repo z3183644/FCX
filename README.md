@@ -1,5 +1,10 @@
 # 一阵失心风 FCX
 
+> 本仓库基于原作者 [z3183644](https://github.com/z3183644) 开源的
+> [FCX](https://github.com/z3183644/FCX) 继续开发。本分支新增 macOS 原生
+> SwiftUI/Liquid Glass 客户端及配套构建支持；原项目名称、作者署名、MIT
+> 许可证和上游地址均予以保留。
+
 FCX 是面向 EA SPORTS FC Ultimate Team Web App 的 Tampermonkey 用户脚本，提供本地 SBC 求解、自动 SBC、永动机流程、球员保护、奖励处理、PlayStyle DIY 进化和小程序远程控制。
 
 ## 文档
@@ -35,10 +40,13 @@ npm run check
 
 后端验证和本机构建：
 
-```powershell
+```shell
 python -m pip install -r requirements.txt -r requirements-build.txt
 python -m pytest backend/tests -q
+# Windows
 powershell -ExecutionPolicy Bypass -File backend/build_gui.ps1
+# macOS
+./backend/build_macos.sh
 ```
 
 构建产物位于：
@@ -47,12 +55,14 @@ powershell -ExecutionPolicy Bypass -File backend/build_gui.ps1
 FCX/dist/FCX.js
 dist/FCX.js
 dist/FCX后端.exe
+build/macos-release/FCX后端-macOS-arm64.zip
+build/macos-release/FCX后端-macOS-x86_64.zip
 dist/routines.json
 dist/version.json
 dist/SHA256SUMS.txt
 ```
 
-根目录 `dist/` 是统一的本地发布目录，已被 Git 忽略；其中的文件由构建流程生成，并通过 GitHub Release 发布，不应手动提交。
+根目录 `dist/` 保存用户脚本和 Windows 发布文件，`build/macos-release/` 保存本机生成的 macOS 压缩包；两者都已被 Git 忽略，由构建流程生成并通过 GitHub Release 发布，不应手动提交。
 
 ## 安全边界
 
@@ -80,6 +90,8 @@ FCX 由个人维护，不保证即时回复。信息完整、影响明确且能�
 
 ## 许可证与致谢
 
-项目以 MIT 许可证发布。FCX 基于 [titiroMonkey/Auto-SBC](https://github.com/titiroMonkey/Auto-SBC) 继续开发，详细说明见 [NOTICE.md](NOTICE.md)。
+项目以 MIT 许可证发布。FCX 的原作者和上游项目为
+[z3183644/FCX](https://github.com/z3183644/FCX)；FCX 又基于
+[titiroMonkey/Auto-SBC](https://github.com/titiroMonkey/Auto-SBC) 继续开发，详细说明见 [NOTICE.md](NOTICE.md)。
 
 EA SPORTS FC、Ultimate Team 及相关标识归其权利人所有，本项目与 Electronic Arts 无隶属或授权关系。

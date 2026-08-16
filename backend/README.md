@@ -6,7 +6,7 @@
 
 ## 开发运行
 
-```powershell
+```shell
 python -m pip install -r requirements.txt -r requirements-build.txt
 python backend/gui.py
 ```
@@ -26,3 +26,11 @@ powershell -ExecutionPolicy Bypass -File backend/build_gui.ps1
 ```
 
 产物为 `dist/FCX后端.exe`。EXE 不提交到 Git；GitHub Release 工作流会和完整用户脚本一起构建、校验并上传。
+
+## macOS 应用
+
+```shell
+./backend/build_macos.sh
+```
+
+脚本会编译原生 SwiftUI 前端，把 Python/OR-Tools 求解服务嵌入应用，并从专用的 1024 像素 Liquid Glass 图稿生成 macOS 多尺寸图标，最后按当前 Mac 的处理器架构生成 `build/macos-release/FCX后端-macOS-<架构>.zip` 及对应的 `.sha256` 文件。界面使用系统 Liquid Glass 与原生控件；旧版 macOS 自动回退到系统 Material。解压后把 `FCX后端.app` 移到“应用程序”目录即可。正式 Release 分别提供 Apple Silicon (`arm64`) 和 Intel (`x86_64`) 构建。

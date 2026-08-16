@@ -7,7 +7,7 @@ FCX 会操作 EA Ultimate Team Web App、访问用户本机求解器，并可选
 安全修复优先支持：
 
 - 当前 GitHub Release 中的最新 `FCX.js`。
-- 与最新用户脚本同时发布的 `FCX后端.exe`。
+- 与最新用户脚本同时发布的 Windows `FCX后端.exe` 和 macOS `FCX后端.app` 压缩包。
 - `main` 分支当前代码。
 
 旧版本可能不再单独修复。提交报告前，请先确认问题能否在最新版本复现。

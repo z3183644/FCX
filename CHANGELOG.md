@@ -4,6 +4,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- 新增 Apple Silicon 与 Intel Mac 的本地后端应用构建、测试和 Release 产物。
+- macOS 使用标准 Application Support 与 Logs 目录保存端口设置和求解器日志。
+- macOS 前端改为原生 SwiftUI，并采用系统 Liquid Glass、原生控件和独立的后台服务生命周期。
+- 为 macOS 重绘 1024 像素 Liquid Glass 应用图标，以青蓝玻璃足球和战术轨迹突出 FCX 的足球助手定位。
+
+### Fixed
+
+- 修复桌面后端打包时遗漏 ttkbootstrap 主题字体、导致 macOS 应用启动即退出的问题。
+- 修复关闭原生 macOS 窗口后本地求解服务可能继续驻留的问题。
+
 ### Security
 
 - 持续审查本地后端访问边界、依赖安全和兼容运行时类型覆盖。
