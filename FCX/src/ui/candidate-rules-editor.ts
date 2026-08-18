@@ -1,6 +1,18 @@
 import type { CandidateRuleSettings, ResolvedCandidateRules } from "../config/fcx-sbc-recommendations";
 
 export type CandidateRuleKey = keyof CandidateRuleSettings;
+type CandidateRangeRuleKey =
+  | "ratingRange"
+  | "priceRange"
+  | "specialFuelRatingRange"
+  | "specialFuelPriceRange"
+  | "specialFuelStorageRatingRange";
+type CandidateToggleRuleKey =
+  | "commonOnly"
+  | "allowExtraRequiredRarityGroupPlayers"
+  | "specialFuelRulesEnabled"
+  | "specialFuelOnlyStorage"
+  | "specialFuelStorageRulesEnabled";
 
 export interface CandidateRulesEditorOptions {
   value: ResolvedCandidateRules;
@@ -43,12 +55,36 @@ export function createCandidateRulesEditor(options: CandidateRulesEditorOptions)
   const grid = documentRef.createElement("div");
   grid.className = "fcx-candidate-rules__grid";
 
+  const appendRuleRow = <T extends HTMLElement>(
+    row: T,
+    parent: HTMLElement = grid,
+  ): T => {
+    parent.appendChild(row);
+    return row;
+  };
+
+  const subheading = (
+    title: string,
+    help: string,
+    parent: HTMLElement = grid,
+  ) => {
+    const row = documentRef.createElement("div");
+    row.className = "fcx-candidate-rules__subheading";
+    const strong = documentRef.createElement("strong");
+    strong.textContent = title;
+    const small = documentRef.createElement("small");
+    small.textContent = help;
+    row.append(strong, small);
+    appendRuleRow(row, parent);
+  };
+
   const numericPair = (
     label: string,
-    key: "ratingRange" | "priceRange",
+    key: CandidateRangeRuleKey,
     min: number,
     max: number,
     nullable: boolean,
+    parent: HTMLElement = grid,
   ) => {
     const row = documentRef.createElement("label");
     row.className = "fcx-candidate-rules__field";
@@ -101,13 +137,15 @@ export function createCandidateRulesEditor(options: CandidateRulesEditorOptions)
     controls.append(low, dash, high);
     row.append(title, controls);
     render();
-    grid.appendChild(row);
+    appendRuleRow(row, parent);
   };
 
   const toggle = (
     label: string,
-    key: "commonOnly" | "allowExtraRequiredRarityGroupPlayers",
+    key: CandidateToggleRuleKey,
     help: string,
+    parent: HTMLElement = grid,
+    onToggle?: () => void,
   ) => {
     const row = documentRef.createElement("label");
     row.className = "fcx-candidate-rules__field fcx-candidate-rules__toggle";
@@ -136,10 +174,11 @@ export function createCandidateRulesEditor(options: CandidateRulesEditorOptions)
       restored = false;
       options.onChange?.(key, input.checked);
       render();
+      onToggle?.();
     });
     row.append(copy, control);
     render();
-    grid.appendChild(row);
+    appendRuleRow(row, parent);
   };
 
   const numericValue = (
@@ -206,6 +245,50 @@ export function createCandidateRulesEditor(options: CandidateRulesEditorOptions)
     "allowExtraRequiredRarityGroupPlayers",
     "关闭时，挑战点名的特殊分组只使用要求数量；不限制其他特殊卡。 ",
   );
+  subheading(
+    "必需特殊卡",
+    "开启后，仅命中当前挑战特殊卡要求的球员使用下面的单独范围。",
+  );
+  toggle(
+    "启用特殊献祭卡规则",
+    "specialFuelRulesEnabled",
+    "关闭时完全沿用上面的总评与价格范围，保持旧版行为。",
+    grid,
+    () => renderers.forEach((render) => render()),
+  );
+  const specialFuelDetails = documentRef.createElement("div");
+  specialFuelDetails.className = "fcx-candidate-rules__details";
+  specialFuelDetails.setAttribute("aria-label", "特殊献祭卡详细设置");
+  const renderSpecialFuelDetails = () => {
+    const collapsed = !current.specialFuelRulesEnabled;
+    specialFuelDetails.hidden = collapsed;
+    specialFuelDetails.setAttribute("aria-hidden", String(collapsed));
+  };
+  renderers.push(renderSpecialFuelDetails);
+  renderSpecialFuelDetails();
+  grid.appendChild(specialFuelDetails);
+  numericPair("直接献祭总评范围", "specialFuelRatingRange", 0, 99, false, specialFuelDetails);
+  numericPair(
+    "特殊献祭卡价格范围（读不到价格时不要设置）",
+    "specialFuelPriceRange",
+    0,
+    15_000_000,
+    true,
+    specialFuelDetails,
+  );
+  toggle(
+    "直接范围只用 SBC 仓库",
+    "specialFuelOnlyStorage",
+    "开启后，直接献祭范围内的特殊卡也必须来自 SBC 仓库。",
+    specialFuelDetails,
+  );
+  toggle(
+    "启用 SBC 仓库额外范围",
+    "specialFuelStorageRulesEnabled",
+    "允许更高分特殊卡只在 SBC 仓库中作为献祭卡进入候选池。",
+    specialFuelDetails,
+  );
+  numericPair("SBC 仓库额外总评范围", "specialFuelStorageRatingRange", 0, 99, false, specialFuelDetails);
   restore.addEventListener("click", () => {
     const next = options.onRestore?.();
     if (!next) return;
@@ -226,6 +309,12 @@ export function createCandidateRulesEditor(options: CandidateRulesEditorOptions)
         commonOnly: current.commonOnly,
         allowExtraRequiredRarityGroupPlayers:
           current.allowExtraRequiredRarityGroupPlayers,
+        specialFuelRulesEnabled: current.specialFuelRulesEnabled,
+        specialFuelRatingRange: [...current.specialFuelRatingRange],
+        specialFuelPriceRange: [...current.specialFuelPriceRange],
+        specialFuelOnlyStorage: current.specialFuelOnlyStorage,
+        specialFuelStorageRulesEnabled: current.specialFuelStorageRulesEnabled,
+        specialFuelStorageRatingRange: [...current.specialFuelStorageRatingRange],
       };
     },
     changedKeys: () => new Set(changed),

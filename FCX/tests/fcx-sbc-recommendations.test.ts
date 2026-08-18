@@ -54,6 +54,18 @@ describe("FCX SBC recommendation snapshot", () => {
     expect(resolveCandidateRules(9999, 1, inherited, own).ratingRange).toEqual([65, 93]);
   });
 
+  it("keeps special fuel rules disabled by default", () => {
+    const { own, inherited } = readers({ "0:0": { ratingRange: [65, 93] } });
+    const resolved = resolveCandidateRules(9999, 1, inherited, own);
+    expect(resolved.specialFuelRulesEnabled).toBe(false);
+    expect(resolved.specialFuelRatingRange).toEqual([0, 99]);
+    expect(resolved.specialFuelPriceRange).toEqual([null, null]);
+    expect(resolved.specialFuelOnlyStorage).toBe(false);
+    expect(resolved.specialFuelStorageRulesEnabled).toBe(false);
+    expect(resolved.specialFuelStorageRatingRange).toEqual([0, 99]);
+    expect(resolved.sources.specialFuelRulesEnabled).toBe("global");
+  });
+
   it("uses a 40 floor for both bronze SBCs while inheriting the ceiling", () => {
     const normal = readers({ "0:0": { ratingRange: [65, 93] } });
     expect(resolveCandidateRules(5, 16, normal.inherited, normal.own).ratingRange).toEqual([40, 93]);
@@ -87,6 +99,58 @@ describe("FCX SBC recommendation snapshot", () => {
     expect(resolved.allowExtraRequiredRarityGroupPlayers).toBe(true);
     expect(resolved.squadRatingOvershoot).toBe(0.1);
     expect(resolved.sources.squadRatingOvershoot).toBe("challenge");
+  });
+
+  it("resolves special fuel fields through global, set, and challenge scopes", () => {
+    const { own, inherited } = readers({
+      "0:0": {
+        ratingRange: [65, 93],
+        specialFuelRulesEnabled: true,
+        specialFuelRatingRange: [90, 99],
+        specialFuelPriceRange: [null, 100_000],
+        specialFuelOnlyStorage: false,
+        specialFuelStorageRulesEnabled: true,
+        specialFuelStorageRatingRange: [95, 97],
+      },
+      "888:0": {
+        specialFuelRatingRange: [94, 99],
+        specialFuelOnlyStorage: true,
+        specialFuelStorageRatingRange: [96, 98],
+      },
+      "888:9": {
+        specialFuelRulesEnabled: false,
+        specialFuelPriceRange: [null, 50_000],
+        specialFuelStorageRulesEnabled: false,
+      },
+    });
+    const resolved = resolveCandidateRules(888, 9, inherited, own);
+    expect(resolved.specialFuelRulesEnabled).toBe(false);
+    expect(resolved.specialFuelRatingRange).toEqual([94, 99]);
+    expect(resolved.specialFuelPriceRange).toEqual([null, 50_000]);
+    expect(resolved.specialFuelOnlyStorage).toBe(true);
+    expect(resolved.specialFuelStorageRulesEnabled).toBe(false);
+    expect(resolved.specialFuelStorageRatingRange).toEqual([96, 98]);
+    expect(resolved.sources.specialFuelRulesEnabled).toBe("challenge");
+    expect(resolved.sources.specialFuelRatingRange).toBe("set");
+    expect(resolved.sources.specialFuelPriceRange).toBe("challenge");
+    expect(resolved.sources.specialFuelOnlyStorage).toBe("set");
+    expect(resolved.sources.specialFuelStorageRulesEnabled).toBe("challenge");
+    expect(resolved.sources.specialFuelStorageRatingRange).toBe("set");
+  });
+
+  it("normalizes special fuel rating and price ranges", () => {
+    const { own, inherited } = readers({
+      "0:0": {
+        ratingRange: [65, 93],
+        specialFuelRatingRange: [97, 93],
+        specialFuelPriceRange: [10_000, 3_000],
+        specialFuelStorageRatingRange: [96, 94],
+      },
+    });
+    const resolved = resolveCandidateRules(9999, 1, inherited, own);
+    expect(resolved.specialFuelRatingRange).toEqual([93, 93]);
+    expect(resolved.specialFuelPriceRange).toEqual([3_000, 3_000]);
+    expect(resolved.specialFuelStorageRatingRange).toEqual([94, 94]);
   });
 
   it("normalizes the squad-rating overshoot to 0-5 in tenths", () => {

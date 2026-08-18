@@ -16,12 +16,24 @@ describe("candidate rules editor", () => {
         squadRatingOvershoot: 0.8,
         commonOnly: true,
         allowExtraRequiredRarityGroupPlayers: false,
+        specialFuelRulesEnabled: false,
+        specialFuelRatingRange: [0, 99],
+        specialFuelPriceRange: [null, null],
+        specialFuelOnlyStorage: false,
+        specialFuelStorageRulesEnabled: false,
+        specialFuelStorageRatingRange: [0, 99],
         sources: {
           ratingRange: "recommended",
           priceRange: "recommended",
           squadRatingOvershoot: "global",
           commonOnly: "recommended",
           allowExtraRequiredRarityGroupPlayers: "global",
+          specialFuelRulesEnabled: "global",
+          specialFuelRatingRange: "global",
+          specialFuelPriceRange: "global",
+          specialFuelOnlyStorage: "global",
+          specialFuelStorageRulesEnabled: "global",
+          specialFuelStorageRatingRange: "global",
         },
       },
     });
@@ -37,6 +49,11 @@ describe("candidate rules editor", () => {
       editor.element.querySelector<HTMLInputElement>('.fcx-candidate-rules__number input')
         ?.inputMode,
     ).toBe("decimal");
+    const specialDetails = editor.element.querySelector<HTMLElement>(
+      ".fcx-candidate-rules__details",
+    );
+    expect(specialDetails?.hidden).toBe(true);
+    expect(specialDetails?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("captures numeric edits on input before a save button is clicked", () => {
@@ -47,12 +64,24 @@ describe("candidate rules editor", () => {
         squadRatingOvershoot: 0.8,
         commonOnly: false,
         allowExtraRequiredRarityGroupPlayers: false,
+        specialFuelRulesEnabled: false,
+        specialFuelRatingRange: [0, 99],
+        specialFuelPriceRange: [null, null],
+        specialFuelOnlyStorage: false,
+        specialFuelStorageRulesEnabled: false,
+        specialFuelStorageRatingRange: [0, 99],
         sources: {
           ratingRange: "global",
           priceRange: "global",
           squadRatingOvershoot: "global",
           commonOnly: "global",
           allowExtraRequiredRarityGroupPlayers: "global",
+          specialFuelRulesEnabled: "global",
+          specialFuelRatingRange: "global",
+          specialFuelPriceRange: "global",
+          specialFuelOnlyStorage: "global",
+          specialFuelStorageRulesEnabled: "global",
+          specialFuelStorageRatingRange: "global",
         },
       },
     });
@@ -91,12 +120,24 @@ describe("candidate rules editor", () => {
         squadRatingOvershoot: 0.8,
         commonOnly: false,
         allowExtraRequiredRarityGroupPlayers: false,
+        specialFuelRulesEnabled: false,
+        specialFuelRatingRange: [0, 99],
+        specialFuelPriceRange: [null, null],
+        specialFuelOnlyStorage: false,
+        specialFuelStorageRulesEnabled: false,
+        specialFuelStorageRatingRange: [0, 99],
         sources: {
           ratingRange: "global",
           priceRange: "global",
           squadRatingOvershoot: "global",
           commonOnly: "global",
           allowExtraRequiredRarityGroupPlayers: "global",
+          specialFuelRulesEnabled: "global",
+          specialFuelRatingRange: "global",
+          specialFuelPriceRange: "global",
+          specialFuelOnlyStorage: "global",
+          specialFuelStorageRulesEnabled: "global",
+          specialFuelStorageRatingRange: "global",
         },
       },
     });
@@ -107,6 +148,90 @@ describe("candidate rules editor", () => {
     ratingMaximum.value = "88";
     expect(editor.getValue().ratingRange).toEqual([65, 88]);
     expect(editor.changedKeys()).toContain("ratingRange");
+  });
+
+  it("captures special fuel controls", () => {
+    const editor = createCandidateRulesEditor({
+      value: {
+        ratingRange: [65, 90],
+        priceRange: [null, null],
+        squadRatingOvershoot: 0.8,
+        commonOnly: false,
+        allowExtraRequiredRarityGroupPlayers: false,
+        specialFuelRulesEnabled: false,
+        specialFuelRatingRange: [91, 99],
+        specialFuelPriceRange: [null, null],
+        specialFuelOnlyStorage: false,
+        specialFuelStorageRulesEnabled: false,
+        specialFuelStorageRatingRange: [0, 99],
+        sources: {
+          ratingRange: "global",
+          priceRange: "global",
+          squadRatingOvershoot: "global",
+          commonOnly: "global",
+          allowExtraRequiredRarityGroupPlayers: "global",
+          specialFuelRulesEnabled: "global",
+          specialFuelRatingRange: "global",
+          specialFuelPriceRange: "global",
+          specialFuelOnlyStorage: "global",
+          specialFuelStorageRulesEnabled: "global",
+          specialFuelStorageRatingRange: "global",
+        },
+      },
+    });
+    document.body.appendChild(editor.element);
+    const specialDetails = editor.element.querySelector<HTMLElement>(
+      ".fcx-candidate-rules__details",
+    )!;
+    expect(specialDetails.hidden).toBe(true);
+
+    const fuelToggle = editor.element.querySelector<HTMLInputElement>(
+      'input[aria-label="启用特殊献祭卡规则"]',
+    )!;
+    fuelToggle.checked = true;
+    fuelToggle.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(editor.getValue().specialFuelRulesEnabled).toBe(true);
+    expect(editor.changedKeys()).toContain("specialFuelRulesEnabled");
+    expect(specialDetails.hidden).toBe(false);
+    expect(specialDetails.getAttribute("aria-hidden")).toBe("false");
+
+    const inputs = editor.element.querySelectorAll<HTMLInputElement>(
+      '.fcx-candidate-rules__range input',
+    );
+    const fuelRatingMinimum = inputs.item(4);
+    const fuelPriceMaximum = inputs.item(7);
+    fuelRatingMinimum.value = "95";
+    fuelRatingMinimum.dispatchEvent(new Event("input", { bubbles: true }));
+    fuelPriceMaximum.value = "75000";
+    fuelPriceMaximum.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(editor.getValue().specialFuelRatingRange).toEqual([95, 99]);
+    expect(editor.getValue().specialFuelPriceRange).toEqual([null, 75_000]);
+    expect(editor.changedKeys()).toContain("specialFuelRatingRange");
+    expect(editor.changedKeys()).toContain("specialFuelPriceRange");
+
+    const storageToggle = editor.element.querySelector<HTMLInputElement>(
+      'input[aria-label="直接范围只用 SBC 仓库"]',
+    )!;
+    storageToggle.checked = true;
+    storageToggle.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(editor.getValue().specialFuelOnlyStorage).toBe(true);
+    expect(editor.changedKeys()).toContain("specialFuelOnlyStorage");
+
+    const storageExtraToggle = editor.element.querySelector<HTMLInputElement>(
+      'input[aria-label="启用 SBC 仓库额外范围"]',
+    )!;
+    storageExtraToggle.checked = true;
+    storageExtraToggle.dispatchEvent(new Event("change", { bubbles: true }));
+    const storageRatingMinimum = inputs.item(8);
+    const storageRatingMaximum = inputs.item(9);
+    storageRatingMinimum.value = "95";
+    storageRatingMinimum.dispatchEvent(new Event("input", { bubbles: true }));
+    storageRatingMaximum.value = "96";
+    storageRatingMaximum.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(editor.getValue().specialFuelStorageRulesEnabled).toBe(true);
+    expect(editor.getValue().specialFuelStorageRatingRange).toEqual([95, 96]);
+    expect(editor.changedKeys()).toContain("specialFuelStorageRulesEnabled");
+    expect(editor.changedKeys()).toContain("specialFuelStorageRatingRange");
   });
 
   it("saves a single-challenge SBC to its challenge scope and a set to group scope", () => {

@@ -2617,6 +2617,10 @@ html.fcx-consent-pending .ut-tab-bar-item.icon-fcx-brand {
 .fcx-candidate-rules__heading small { margin-top: 3px; color: #94a0b3; font-size: 11px; }
 .fcx-candidate-rules__restore { padding: 8px 11px; border: 1px solid #46536a; border-radius: 9px; background: #222c3b; color: #eef2f8; cursor: pointer; }
 .fcx-candidate-rules__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.fcx-candidate-rules__subheading { grid-column: 1 / -1; display: grid; gap: 3px; margin-top: 4px; color: #d7dfec; }
+.fcx-candidate-rules__subheading small { color: #94a0b3; font-size: 10px; }
+.fcx-candidate-rules__details { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.fcx-candidate-rules__details[hidden] { display: none; }
 .fcx-candidate-rules__field { display: grid; gap: 6px; padding: 11px; border: 1px solid #2c374b; border-radius: 11px; background: #111821; }
 .fcx-candidate-rules__field > span:first-child { font-weight: 700; }
 .fcx-candidate-rules__range { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 7px; }
@@ -3174,4 +3178,3 @@ const wait = async (maxWaitTime = 2) => {
     setTimeout(resolve, factor * maxWaitTime * MILLIS_IN_SECOND)
   );
 };
-

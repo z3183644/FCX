@@ -210,6 +210,12 @@ const sbcViewOverride = () => {
             "squadRatingOvershoot",
             "commonOnly",
             "allowExtraRequiredRarityGroupPlayers",
+            "specialFuelRulesEnabled",
+            "specialFuelRatingRange",
+            "specialFuelPriceRange",
+            "specialFuelOnlyStorage",
+            "specialFuelStorageRulesEnabled",
+            "specialFuelStorageRatingRange",
           ]) {
             fcxSettingsStore.deleteValue(_challenge.setId, _challenge.id, key);
           }
@@ -1012,4 +1018,3 @@ const playerItemOverride = () => {
     return result;
   };
 };
-

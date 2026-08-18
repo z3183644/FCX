@@ -1,5 +1,8 @@
 import type { SettingKey, SolverSettings } from "../types/settings";
-import { DEFAULT_RATING_RANGE } from "./default-settings";
+import {
+  DEFAULT_RATING_RANGE,
+  DEFAULT_SPECIAL_FUEL_RATING_RANGE,
+} from "./default-settings";
 
 export type RuleSource = "challenge" | "set" | "recommended" | "global";
 export type PriceRange = [number | null, number | null];
@@ -10,6 +13,12 @@ export interface CandidateRuleSettings {
   squadRatingOvershoot: number;
   commonOnly: boolean;
   allowExtraRequiredRarityGroupPlayers: boolean;
+  specialFuelRulesEnabled: boolean;
+  specialFuelRatingRange: [number, number];
+  specialFuelPriceRange: PriceRange;
+  specialFuelOnlyStorage: boolean;
+  specialFuelStorageRulesEnabled: boolean;
+  specialFuelStorageRatingRange: [number, number];
 }
 
 export interface ResolvedCandidateRules extends CandidateRuleSettings {
@@ -142,6 +151,20 @@ export function resolveCandidateRules(
     commonOnly: readValue(0, 0, "commonOnly") === true,
     allowExtraRequiredRarityGroupPlayers:
       readValue(0, 0, "allowExtraRequiredRarityGroupPlayers") === true,
+    specialFuelRulesEnabled:
+      readValue(0, 0, "specialFuelRulesEnabled") === true,
+    specialFuelRatingRange: normalizeRatingRange(
+      readValue(0, 0, "specialFuelRatingRange") ?? DEFAULT_SPECIAL_FUEL_RATING_RANGE,
+    ),
+    specialFuelPriceRange: normalizePriceRange(
+      readValue(0, 0, "specialFuelPriceRange"),
+    ),
+    specialFuelOnlyStorage: readValue(0, 0, "specialFuelOnlyStorage") === true,
+    specialFuelStorageRulesEnabled:
+      readValue(0, 0, "specialFuelStorageRulesEnabled") === true,
+    specialFuelStorageRatingRange: normalizeRatingRange(
+      readValue(0, 0, "specialFuelStorageRatingRange") ?? DEFAULT_SPECIAL_FUEL_RATING_RANGE,
+    ),
   };
   const recommended = FCX_SBC_RECOMMENDATIONS[Number(setId)];
   const recommendedRating = recommendedRatingRange(Number(setId), globalRules.ratingRange, recommended);
@@ -158,12 +181,24 @@ export function resolveCandidateRules(
     commonOnly: globalRules.commonOnly || recommended?.commonOnly === true,
     allowExtraRequiredRarityGroupPlayers:
       globalRules.allowExtraRequiredRarityGroupPlayers,
+    specialFuelRulesEnabled: globalRules.specialFuelRulesEnabled,
+    specialFuelRatingRange: globalRules.specialFuelRatingRange,
+    specialFuelPriceRange: globalRules.specialFuelPriceRange,
+    specialFuelOnlyStorage: globalRules.specialFuelOnlyStorage,
+    specialFuelStorageRulesEnabled: globalRules.specialFuelStorageRulesEnabled,
+    specialFuelStorageRatingRange: globalRules.specialFuelStorageRatingRange,
     sources: {
       ratingRange: hasRatingRecommendation ? "recommended" : "global",
       priceRange: recommended?.priceRange ? "recommended" : "global",
       squadRatingOvershoot: "global",
       commonOnly: recommended?.commonOnly === true && !globalRules.commonOnly ? "recommended" : "global",
       allowExtraRequiredRarityGroupPlayers: "global",
+      specialFuelRulesEnabled: "global",
+      specialFuelRatingRange: "global",
+      specialFuelPriceRange: "global",
+      specialFuelOnlyStorage: "global",
+      specialFuelStorageRulesEnabled: "global",
+      specialFuelStorageRatingRange: "global",
     },
   };
   const applyScope = (scopeSet: number, scopeChallenge: number, source: RuleSource) => {
@@ -173,11 +208,26 @@ export function resolveCandidateRules(
       "squadRatingOvershoot",
       "commonOnly",
       "allowExtraRequiredRarityGroupPlayers",
+      "specialFuelRulesEnabled",
+      "specialFuelRatingRange",
+      "specialFuelPriceRange",
+      "specialFuelOnlyStorage",
+      "specialFuelStorageRulesEnabled",
+      "specialFuelStorageRatingRange",
     ] as const) {
       const value = readOwnValue(scopeSet, scopeChallenge, key);
       if (value === undefined) continue;
       if (key === "ratingRange") result.ratingRange = normalizeRatingRange(value);
       else if (key === "priceRange") result.priceRange = normalizePriceRange(value);
+      else if (key === "specialFuelRatingRange") {
+        result.specialFuelRatingRange = normalizeRatingRange(value);
+      }
+      else if (key === "specialFuelPriceRange") {
+        result.specialFuelPriceRange = normalizePriceRange(value);
+      }
+      else if (key === "specialFuelStorageRatingRange") {
+        result.specialFuelStorageRatingRange = normalizeRatingRange(value);
+      }
       else if (key === "squadRatingOvershoot") {
         result.squadRatingOvershoot = normalizeSquadRatingOvershoot(value);
       }

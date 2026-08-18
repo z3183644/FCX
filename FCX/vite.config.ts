@@ -87,7 +87,7 @@ import { SettingsStore } from "./state/settings-store";
 import { SettingsEditSession } from "./state/settings-edit-session";
 import { PlayerProtectionStore } from "./state/player-protection-store";
 import { calculateSbcPrice } from "./domain/sbc/pricing";
-import { isBackendCandidate } from "./domain/sbc/player-filter";
+import { candidateHasActivePriceRange, isBackendCandidate } from "./domain/sbc/player-filter";
 import { getStalePriceIds, isCachedPriceOld, updateRatingReferencePrices } from "./domain/market/price-cache";
 import { countPlayersByRating } from "./domain/inventory/rating-counts";
 import { appendUniqueInventoryItems } from "./domain/inventory/pagination";

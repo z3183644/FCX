@@ -47,6 +47,12 @@ describe("SettingsStore", () => {
     expect(defaultSolverSettings.priceRange).toEqual([null, null]);
     expect(defaultSolverSettings.commonOnly).toBe(false);
     expect(defaultSolverSettings.allowExtraRequiredRarityGroupPlayers).toBe(false);
+    expect(defaultSolverSettings.specialFuelRulesEnabled).toBe(false);
+    expect(defaultSolverSettings.specialFuelRatingRange).toEqual([0, 99]);
+    expect(defaultSolverSettings.specialFuelPriceRange).toEqual([null, null]);
+    expect(defaultSolverSettings.specialFuelOnlyStorage).toBe(false);
+    expect(defaultSolverSettings.specialFuelStorageRulesEnabled).toBe(false);
+    expect(defaultSolverSettings.specialFuelStorageRatingRange).toEqual([0, 99]);
     expect(defaultSolverSettings).not.toHaveProperty("excludeSpecial");
     expect(defaultSolverSettings).not.toHaveProperty("saveTotw");
     expect(defaultSolverSettings).not.toHaveProperty("repeatCount");
@@ -266,6 +272,21 @@ describe("SettingsStore", () => {
     expect(store.getValue(0, 0, "ratingRange")).toEqual([70, 90]);
     expect(store.getValue(12, 34, "maxSolveTime")).toBe(30);
     expect(store.getDocument().fcxCandidateRulesMigrationVersion).toBe(1);
+  });
+
+  it("does not enable special fuel rules while migrating legacy candidate settings", () => {
+    const storage = new MemoryStorage();
+    storage.setItem("sbcSolverSettings", JSON.stringify({ sbcSettings: {
+      0: { 0: { ratingRange: [70, 90], excludeSpecial: true } },
+    } }));
+    const store = new SettingsStore(storage);
+
+    expect(store.migrateFcxCandidateRules()).toBe(true);
+    expect(store.getValue(0, 0, "ratingRange")).toEqual([70, 90]);
+    expect(store.getValue(0, 0, "specialFuelRulesEnabled")).toBeUndefined();
+    expect(store.getValue(0, 0, "specialFuelRatingRange")).toBeUndefined();
+    expect(store.getValue(0, 0, "specialFuelStorageRulesEnabled")).toBeUndefined();
+    expect(storage.getItem("sbcSolverSettings")).not.toContain("specialFuel");
   });
 
   it("migrates the legacy local API URL into a validated backend port", () => {

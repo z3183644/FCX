@@ -2994,6 +2994,12 @@ const openSbcDetailsModal = async (set, imageUrl, availableSets = []) => {
       "squadRatingOvershoot",
       "commonOnly",
       "allowExtraRequiredRarityGroupPlayers",
+      "specialFuelRulesEnabled",
+      "specialFuelRatingRange",
+      "specialFuelPriceRange",
+      "specialFuelOnlyStorage",
+      "specialFuelStorageRulesEnabled",
+      "specialFuelStorageRatingRange",
     ];
     if (candidateRulesRestoreRequested) {
       for (const key of keys) {
@@ -3244,4 +3250,3 @@ let createSBCTab = async (force = false) => {
     return false;
   }
 };
-

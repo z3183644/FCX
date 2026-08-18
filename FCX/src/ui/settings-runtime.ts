@@ -1434,6 +1434,12 @@ const createSBCCustomRulesPanel = async (
                 "squadRatingOvershoot",
                 "commonOnly",
                 "allowExtraRequiredRarityGroupPlayers",
+                "specialFuelRulesEnabled",
+                "specialFuelRatingRange",
+                "specialFuelPriceRange",
+                "specialFuelOnlyStorage",
+                "specialFuelStorageRulesEnabled",
+                "specialFuelStorageRatingRange",
               ]) {
                 session.settings.deleteValue(
                   dropdown.getValue(),
@@ -2055,5 +2061,3 @@ const createSettingsTile = (parentDiv, label, id) => {
   parentDiv.appendChild(tile);
   return tileContent;
 };
-
-

@@ -36,6 +36,12 @@ const exclusions = {
   priceRange: [null, null] as [null, null],
   commonOnly: false,
   skipPriceRange: false,
+  specialFuelRulesEnabled: false,
+  specialFuelRatingRange: [0, 99] as [number, number],
+  specialFuelPriceRange: [null, null] as [null, null],
+  specialFuelOnlyStorage: false,
+  specialFuelStorageRulesEnabled: false,
+  specialFuelStorageRatingRange: [0, 99] as [number, number],
 };
 
 const candidate = (rating: number, ratingRange: readonly [number, number]) => ({
@@ -58,6 +64,7 @@ const candidate = (rating: number, ratingRange: readonly [number, number]) => ({
   extinct: false,
   storage: false,
   substitute: false,
+  requiredSpecialFuel: false,
 });
 
 describe("FCX bronze SBC candidate defaults", () => {

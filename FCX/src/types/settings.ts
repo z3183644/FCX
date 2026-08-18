@@ -25,6 +25,12 @@ export interface SolverSettings {
   priceRange: [number | null, number | null];
   commonOnly: boolean;
   allowExtraRequiredRarityGroupPlayers: boolean;
+  specialFuelRulesEnabled: boolean;
+  specialFuelRatingRange: [number, number];
+  specialFuelPriceRange: [number | null, number | null];
+  specialFuelOnlyStorage: boolean;
+  specialFuelStorageRulesEnabled: boolean;
+  specialFuelStorageRatingRange: [number, number];
   showPrices: boolean;
   showSbcTab: boolean;
   useDupes: boolean;

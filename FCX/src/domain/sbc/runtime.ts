@@ -102,10 +102,27 @@ let solveSBC = async (
       (setId, scopedChallengeId, key) =>
         fcxSettingsStore.getOwnValue(setId, scopedChallengeId, key)
     );
+    const requiredGroupIds = requiredRarityGroupIds(sbcData.constraints || []);
+    const requiredGroupConditions = (sbcData.constraints || [])
+      .filter((constraint) =>
+        constraint.requirementKey === "PLAYER_RARITY_GROUP" &&
+        constraint.scope !== "LOWER" &&
+        Number(constraint.count || 0) > 0
+      )
+      .map((constraint) =>
+        [...new Set((constraint.eligibilityValues || []).map(Number).filter(Number.isFinite))]
+      );
+    const hasActiveCandidatePriceRange =
+      hasActivePriceRange(candidateRules.priceRange) ||
+      (
+        requiredGroupIds.length > 0 &&
+        candidateRules.specialFuelRulesEnabled &&
+        hasActivePriceRange(candidateRules.specialFuelPriceRange)
+      );
     let skipPriceRange = false;
     if (
       normalizedRunOptions.ignoreValue &&
-      hasActivePriceRange(candidateRules.priceRange)
+      hasActiveCandidatePriceRange
     ) {
       const numericSetId = Number(sbcId);
       if (!sbcExecution.priceRuleAcknowledgedSetIds.has(numericSetId)) {
@@ -128,16 +145,6 @@ let solveSBC = async (
       }
       skipPriceRange = true;
     }
-    const requiredGroupIds = requiredRarityGroupIds(sbcData.constraints || []);
-    const requiredGroupConditions = (sbcData.constraints || [])
-      .filter((constraint) =>
-        constraint.requirementKey === "PLAYER_RARITY_GROUP" &&
-        constraint.scope !== "LOWER" &&
-        Number(constraint.count || 0) > 0
-      )
-      .map((constraint) =>
-        [...new Set((constraint.eligibilityValues || []).map(Number).filter(Number.isFinite))]
-      );
     if (candidateRules.commonOnly && requiredGroupIds.length > 0) {
       sbcExecution.stoppedReason =
         `“${sbcData.challengeName || "当前挑战"}”要求特殊分组球员，但当前规则启用了“只用普通卡”。`;
@@ -312,7 +319,23 @@ let solveSBC = async (
       const price = Number(getPrice(item));
       return Number.isFinite(price) && price > 0 ? price : null;
     };
-    const buildCandidateFlags = (item) => ({
+    const belongsToRequiredGroup = (item, groupId) => {
+      try {
+        if (typeof item.belongsToGroup === "function") {
+          return item.belongsToGroup(groupId) === true;
+        }
+      } catch (error) {
+        console.debug("[FCX][SBC] belongsToGroup failed", { groupId, error });
+      }
+      return Array.isArray(item.groups) && item.groups.map(Number).includes(groupId);
+    };
+    const requiredGroupMatches = (item) => [...new Set(requiredGroupConditions.flatMap((groupIds) => {
+      const firstMatch = groupIds.find((groupId) =>
+        belongsToRequiredGroup(item, groupId)
+      );
+      return firstMatch === undefined ? [] : [firstMatch];
+    }))];
+    const buildCandidateFlags = (item, matchingRequiredGroups = requiredGroupMatches(item)) => ({
       loanCount: item.loans,
       sbcPrice: getSBCPrice(
         item,
@@ -341,6 +364,7 @@ let solveSBC = async (
         : Boolean(PriceItems[readPlayerDefinitionId(item)]?.isExtinct),
       storage: Boolean(item?.isStorage),
       substitute: sbcData.subs.includes(readPlayerDefinitionId(item)),
+      requiredSpecialFuel: matchingRequiredGroups.length > 0,
     });
     const candidateExclusions = {
       leagues: excludeLeagues,
@@ -356,14 +380,26 @@ let solveSBC = async (
       priceRange: candidateRules.priceRange,
       commonOnly: candidateRules.commonOnly,
       skipPriceRange,
+      specialFuelRulesEnabled: candidateRules.specialFuelRulesEnabled,
+      specialFuelRatingRange: candidateRules.specialFuelRatingRange,
+      specialFuelPriceRange: candidateRules.specialFuelPriceRange,
+      specialFuelOnlyStorage: candidateRules.specialFuelOnlyStorage,
+      specialFuelStorageRulesEnabled:
+        candidateRules.specialFuelStorageRulesEnabled,
+      specialFuelStorageRatingRange:
+        candidateRules.specialFuelStorageRatingRange,
     };
-    if (!skipPriceRange && hasActivePriceRange(candidateRules.priceRange)) {
+    if (!skipPriceRange && hasActiveCandidatePriceRange) {
       const missingPrices = players.filter((item) => {
         const flags = buildCandidateFlags(item);
-        return flags.marketPrice === null && isBackendCandidate(flags, {
-          ...candidateExclusions,
-          skipPriceRange: true,
-        });
+        return (
+          flags.marketPrice === null &&
+          candidateHasActivePriceRange(flags, candidateExclusions) &&
+          isBackendCandidate(flags, {
+            ...candidateExclusions,
+            skipPriceRange: true,
+          })
+        );
       });
       if (missingPrices.length > 0) {
         sbcExecution.stoppedReason =
@@ -384,20 +420,7 @@ let solveSBC = async (
           );
       })
       .map((item) => {
-        const belongsToRequiredGroup = (groupId) => {
-          try {
-            if (typeof item.belongsToGroup === "function") {
-              return item.belongsToGroup(groupId) === true;
-            }
-          } catch (error) {
-            console.debug("[FCX][SBC] belongsToGroup failed", { groupId, error });
-          }
-          return Array.isArray(item.groups) && item.groups.map(Number).includes(groupId);
-        };
-        const relevantGroups = [...new Set(requiredGroupConditions.flatMap((groupIds) => {
-          const firstMatch = groupIds.find(belongsToRequiredGroup);
-          return firstMatch === undefined ? [] : [firstMatch];
-        }))];
+        const relevantGroups = requiredGroupMatches(item);
 
         return {
           id: item.id,
@@ -1557,5 +1580,3 @@ let solveSbcSet = async (
   }
   return execution;
 };
-
-

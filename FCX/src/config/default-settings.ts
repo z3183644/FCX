@@ -1,6 +1,7 @@
 import type { SolverSettings } from "../types/settings";
 
 export const DEFAULT_RATING_RANGE: [number, number] = [65, 93];
+export const DEFAULT_SPECIAL_FUEL_RATING_RANGE: [number, number] = [0, 99];
 
 export const defaultSolverSettings: SolverSettings = {
   apiUrl: "http://127.0.0.1:8000",
@@ -29,6 +30,12 @@ export const defaultSolverSettings: SolverSettings = {
   priceRange: [null, null],
   commonOnly: false,
   allowExtraRequiredRarityGroupPlayers: false,
+  specialFuelRulesEnabled: false,
+  specialFuelRatingRange: [...DEFAULT_SPECIAL_FUEL_RATING_RANGE],
+  specialFuelPriceRange: [null, null],
+  specialFuelOnlyStorage: false,
+  specialFuelStorageRulesEnabled: false,
+  specialFuelStorageRatingRange: [...DEFAULT_SPECIAL_FUEL_RATING_RANGE],
   showPrices: true,
   showSbcTab: true,
   useDupes: true,

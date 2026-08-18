@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  candidateHasActivePriceRange,
   isBackendCandidate,
   type CandidateExclusions,
   type CandidateFlags,
@@ -25,6 +26,7 @@ const candidate: CandidateFlags = {
   extinct: false,
   storage: false,
   substitute: false,
+  requiredSpecialFuel: false,
 };
 
 const exclusions: CandidateExclusions = {
@@ -41,6 +43,12 @@ const exclusions: CandidateExclusions = {
   excludeTradable: false,
   excludeExtinct: false,
   onlyStorage: false,
+  specialFuelRulesEnabled: false,
+  specialFuelRatingRange: [0, 99],
+  specialFuelPriceRange: [null, null],
+  specialFuelOnlyStorage: false,
+  specialFuelStorageRulesEnabled: false,
+  specialFuelStorageRatingRange: [0, 99],
 };
 
 describe("backend player filtering", () => {
@@ -83,5 +91,175 @@ describe("backend player filtering", () => {
     expect(isBackendCandidate({ ...candidate, rating: 65, ratingRange: [65, 93] }, exclusions)).toBe(true);
     expect(isBackendCandidate({ ...candidate, rating: 93, ratingRange: [65, 93] }, exclusions)).toBe(true);
     expect(isBackendCandidate({ ...candidate, rating: 94, ratingRange: [65, 93] }, exclusions)).toBe(false);
+  });
+
+  it("lets required special fuel use its own rating range", () => {
+    const rules = {
+      ...exclusions,
+      specialFuelRulesEnabled: true,
+      specialFuelRatingRange: [93, 96] as [number, number],
+    };
+    expect(
+      isBackendCandidate(
+        { ...candidate, rating: 95, ratingRange: [65, 90], requiredSpecialFuel: true },
+        rules,
+      ),
+    ).toBe(true);
+    expect(
+      isBackendCandidate(
+        { ...candidate, rating: 95, ratingRange: [65, 90], requiredSpecialFuel: false },
+        rules,
+      ),
+    ).toBe(false);
+  });
+
+  it("ignores remembered special fuel fields while the feature is disabled", () => {
+    const disabledRules = {
+      ...exclusions,
+      priceRange: [null, null] as [number | null, number | null],
+      specialFuelRulesEnabled: false,
+      specialFuelRatingRange: [95, 96] as [number, number],
+      specialFuelPriceRange: [null, 500] as [number | null, number | null],
+      specialFuelOnlyStorage: true,
+      specialFuelStorageRulesEnabled: true,
+      specialFuelStorageRatingRange: [97, 98] as [number, number],
+    };
+    expect(
+      isBackendCandidate(
+        {
+          ...candidate,
+          rating: 82,
+          ratingRange: [80, 83],
+          marketPrice: 1_000,
+          requiredSpecialFuel: true,
+          storage: false,
+        },
+        disabledRules,
+      ),
+    ).toBe(true);
+    expect(
+      isBackendCandidate(
+        {
+          ...candidate,
+          rating: 82,
+          ratingRange: [80, 83],
+          marketPrice: 1_000,
+          requiredSpecialFuel: true,
+          storage: false,
+        },
+        { ...disabledRules, priceRange: [null, 500] },
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps the normal price range separate from special fuel price rules", () => {
+    const rules = {
+      ...exclusions,
+      priceRange: [null, 5_000] as [number | null, number | null],
+      specialFuelRulesEnabled: true,
+      specialFuelPriceRange: [null, 100_000] as [number | null, number | null],
+    };
+    expect(
+      isBackendCandidate(
+        { ...candidate, marketPrice: 50_000, requiredSpecialFuel: true },
+        rules,
+      ),
+    ).toBe(true);
+    expect(
+      isBackendCandidate(
+        { ...candidate, marketPrice: 50_000, requiredSpecialFuel: false },
+        rules,
+      ),
+    ).toBe(false);
+  });
+
+  it("detects missing prices only for the candidate's active price branch", () => {
+    const rules = {
+      ...exclusions,
+      priceRange: [null, null] as [number | null, number | null],
+      specialFuelRulesEnabled: true,
+      specialFuelPriceRange: [null, 5_000] as [number | null, number | null],
+    };
+    const normalCandidate = {
+      ...candidate,
+      marketPrice: null,
+      requiredSpecialFuel: false,
+    };
+    const specialCandidate = {
+      ...candidate,
+      marketPrice: null,
+      requiredSpecialFuel: true,
+    };
+
+    expect(candidateHasActivePriceRange(normalCandidate, rules)).toBe(false);
+    expect(candidateHasActivePriceRange(specialCandidate, rules)).toBe(true);
+    expect(isBackendCandidate(normalCandidate, rules)).toBe(true);
+    expect(isBackendCandidate(specialCandidate, rules)).toBe(false);
+    expect(
+      isBackendCandidate(specialCandidate, {
+        ...rules,
+        skipPriceRange: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("applies fuel storage-only only to required special fuel", () => {
+    const rules = {
+      ...exclusions,
+      specialFuelRulesEnabled: true,
+      specialFuelOnlyStorage: true,
+    };
+    expect(
+      isBackendCandidate(
+        { ...candidate, requiredSpecialFuel: true, storage: false },
+        rules,
+      ),
+    ).toBe(false);
+    expect(
+      isBackendCandidate(
+        { ...candidate, requiredSpecialFuel: true, storage: true },
+        rules,
+      ),
+    ).toBe(true);
+    expect(
+      isBackendCandidate(
+        { ...candidate, requiredSpecialFuel: false, storage: false },
+        rules,
+      ),
+    ).toBe(true);
+  });
+
+  it("allows a direct special range plus a storage-only extra range", () => {
+    const rules = {
+      ...exclusions,
+      specialFuelRulesEnabled: true,
+      specialFuelRatingRange: [87, 92] as [number, number],
+      specialFuelStorageRulesEnabled: true,
+      specialFuelStorageRatingRange: [95, 96] as [number, number],
+    };
+    expect(
+      isBackendCandidate(
+        { ...candidate, rating: 88, requiredSpecialFuel: true, storage: false },
+        rules,
+      ),
+    ).toBe(true);
+    expect(
+      isBackendCandidate(
+        { ...candidate, rating: 95, requiredSpecialFuel: true, storage: false },
+        rules,
+      ),
+    ).toBe(false);
+    expect(
+      isBackendCandidate(
+        { ...candidate, rating: 95, requiredSpecialFuel: true, storage: true },
+        rules,
+      ),
+    ).toBe(true);
+    expect(
+      isBackendCandidate(
+        { ...candidate, rating: 93, requiredSpecialFuel: true, storage: true },
+        rules,
+      ),
+    ).toBe(false);
   });
 });
