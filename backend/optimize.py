@@ -162,7 +162,7 @@ def create_var(model, df, map_idx, num_cnts, sbc):
     for i in range(num_players):
         boolVar = model.NewBoolVar(f"player{i}")
         player.append(boolVar)
-        if sum(1 for _ in filter(None.__ne__, sbc["currentSolution"])) > 0:
+        if sum(1 for x in sbc["currentSolution"] if x is not None) > 0:
             if df.at[i, "assetId"] in sbc["currentSolution"]:
                 solutionPosition = sbc["formation"][
                     sbc["currentSolution"].index(df.at[i, "assetId"])
