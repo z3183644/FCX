@@ -3,8 +3,23 @@
 
 const popupOverride = () => {};
 
+const isFcxShortcutTypingTarget = (target) =>
+  target instanceof Element &&
+  Boolean(target.closest("input, textarea, select, [contenteditable]"));
+
 const registerFcxDebugShortcuts = () => document.addEventListener("keydown", async function onKeyR(e) {
-  if (e.key === "z" && !e.repeat) {
+  if (
+    e.defaultPrevented ||
+    e.repeat ||
+    e.isComposing ||
+    e.altKey ||
+    e.ctrlKey ||
+    e.metaKey ||
+    isFcxShortcutTypingTarget(e.target)
+  ) {
+    return;
+  }
+  if (e.key === "z") {
     let storage = await getStorage();
     console.log("Pressed “z”: fetching storage items…");
 
@@ -15,7 +30,7 @@ const registerFcxDebugShortcuts = () => document.addEventListener("keydown", asy
     }
     console.log("Storage item counts:", counts);
   }
-  if (e.key === "q" && !e.repeat) {
+  if (e.key === "q") {
     console.log("Pressed “q”: quickselling unassigned items…");
     dealWithUnassigned();
 
@@ -45,15 +60,9 @@ const registerFcxDebugShortcuts = () => document.addEventListener("keydown", asy
         above92: playerRatings.filter((r) => r >= 92).length,
       };
       console.log("Unassigned rating tiers count:", tierCounts);
-
-      let nextSetId;
-
-      // kick off the solver for the chosen SBC
-      solveSBC(nextSetId, 0, true);
     }
   }
-  // ignore repeats, only respond to lower‐case r
-  if (e.key === "r" && !e.repeat) {
+  if (e.key === "r") {
     console.log("Pressed “r”: fetching unassigned items…");
     try {
       let pp = await fetchUnassigned();
@@ -190,4 +199,3 @@ void ensureFcxDisclaimerAccepted(createGmValueAdapter(), document)
     startFcxRuntime();
   })
   .catch((error) => console.error("[FCX][Disclaimer] initialization failed", error));
-

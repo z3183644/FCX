@@ -67,12 +67,22 @@ describe("legacy behavior characterization", () => {
     expect(solverSource).toContain("homeHubInit.apply(this, args)");
   });
 
-  it("retains q, r and z shortcut paths including unresolved identifiers", () => {
+  it("keeps debug shortcuts out of editable input and removes the unresolved SBC call", () => {
+    expect(bootstrapSource).toContain("const isFcxShortcutTypingTarget");
+    expect(bootstrapSource).toContain(
+      'target.closest("input, textarea, select, [contenteditable]")',
+    );
+    expect(bootstrapSource).toContain("e.defaultPrevented");
+    expect(bootstrapSource).toContain("e.isComposing");
+    expect(bootstrapSource).toContain("e.ctrlKey");
     expect(bootstrapSource).toContain('e.key === "z"');
     expect(bootstrapSource).toContain("await getStorage()");
     expect(bootstrapSource).toContain('e.key === "q"');
-    expect(bootstrapSource).toContain("let nextSetId;");
+    expect(bootstrapSource).not.toContain("let nextSetId;");
+    expect(bootstrapSource).not.toContain("solveSBC(nextSetId");
     expect(bootstrapSource).toContain('e.key === "r"');
+    expect(solverSource).toContain("Number.isSafeInteger(numericSetId)");
+    expect(solverSource).toContain("SBC集合编号无效，请重新选择SBC");
   });
 
   it("removes the legacy three-digit task counter", () => {

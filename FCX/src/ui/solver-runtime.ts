@@ -252,6 +252,9 @@ const getChallengeResponseItems = (response) =>
 
 const readFreshSbcExecutionState = async (sbcId, requestOptions = {}) => {
   const numericSetId = Number(sbcId);
+  if (!Number.isSafeInteger(numericSetId) || numericSetId <= 0) {
+    throw new Error("SBC集合编号无效，请重新选择SBC");
+  }
   const freshProbe = isFreshSbcStateProbe(requestOptions);
   const cachedCatalog = fcxSbcCache.peekCatalog();
   const catalog = freshProbe || !cachedCatalog
@@ -677,4 +680,3 @@ let getSBCPrice = (
     }
   );
 };
-
